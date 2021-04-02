@@ -1,3 +1,4 @@
+import warnings
 from scipy.optimize import OptimizeResult
 from scipy.optimize.optimize import _status_message
 from torch import Tensor
@@ -49,7 +50,7 @@ def fmin_newtoncg(
         state, e.g. callback(x_k)
     disp : int | bool
         Display (verbosity) level. Set to >0 to print status messages.
-    return_all : bool, optional
+    return_all : bool
         Set to True to return a list of the best solution at each of the
         iterations.
 
@@ -67,15 +68,17 @@ def fmin_newtoncg(
         cg_max_iter = x0.numel() * 20
 
     def f_with_grad(x):
-        x = x.view_as(x0).detach().requires_grad_(True)
+        x = x.detach().requires_grad_(True)
         with torch.enable_grad():
             fval = f(x)
         grad, = autograd.grad(fval, x)
-        return fval.detach(), grad.view(-1)
+        return fval.detach(), grad
 
     def dir_evaluate(x, t, d):
         """directional evaluate. Used only for strong-wolfe line search"""
-        return f_with_grad(x.add(d, alpha=t))
+        x = x.add(d, alpha=t).view_as(x0)
+        fval, grad = f_with_grad(x)
+        return fval, grad.view(-1)
 
     # generalized dot product for CG that supports batch inputs
     # TODO: let the user specify dot fn?
@@ -89,6 +92,7 @@ def fmin_newtoncg(
     grad = x.new_full(x.shape, -1.)
     nfev = 0  # number of function evals
     ncg = 0   # number of cg iterations
+    n_iter = 0
 
     if disp > 1:
         fval = f(x)
@@ -180,6 +184,173 @@ def fmin_newtoncg(
         if return_all:
             allvecs.append(x)
 
+
+        # ==========================
+        #  check for convergence
+        # ==========================
+
+        if update.norm(p=1) <= xtol:
+            return terminate(0, _status_message['success'])
+
+        if not fval.isfinite():
+            return terminate(3, _status_message['nan'])
+
+    # if we get to the end, the maximum num. iterations was reached
+    return terminate(1, "Warning: " + _status_message['maxiter'])
+
+
+
+@torch.no_grad()
+def fmin_newton(
+        f, x0, lr=1., max_iter=None, line_search='strong_wolfe', xtol=1e-5,
+        tikhonov=0., callback=None, disp=0, return_all=False):
+    """
+    Minimize a scalar function of one or more variables using the
+    Newton-Raphson method.
+
+    This variant uses an "exact" Newton routine based on Cholesky factorization
+    of the explicit Hessian matrix. In general it will be less efficient than
+    NewtonCG, and less robust to non-PD Hessians.
+
+    Parameters
+    ----------
+    f : callable
+        Scalar objective function to minimize
+    x0 : Tensor
+        Initialization point
+    lr : float
+        Step size for parameter updates. If using line search, this will be
+        used as the initial step size for the search.
+    max_iter : int, optional
+        Maximum number of iterations to perform. Defaults to 200 * x0.numel()
+    line_search : str
+        Line search specifier. Currently the available options are
+        {'none', 'strong_wolfe'}.
+    xtol : float
+        Average relative error in solution `xopt` acceptable for
+        convergence.
+    tikhonov : float
+        Optional diagonal regularization (Tikhonov) parameter for the Hessian.
+    callback : callable, optional
+        Function to call after each iteration with the current parameter
+        state, e.g. callback(x_k)
+    disp : int | bool
+        Display (verbosity) level. Set to >0 to print status messages.
+    return_all : bool
+        Set to True to return a list of the best solution at each of the
+        iterations.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
+    """
+    lr = float(lr)
+    disp = int(disp)
+    xtol = x0.numel() * xtol
+    if max_iter is None:
+        max_iter = x0.numel() * 200
+    if x0.dim() > 1:
+        warnings.warn('Newton algorithm does not support tensors with dim > 1.'
+                      'The input will be flattened.')
+
+    def f_with_grad(x):
+        x = x.view_as(x0).detach().requires_grad_(True)
+        with torch.enable_grad():
+            fval = f(x)
+        grad, = autograd.grad(fval, x)
+        return fval.detach(), grad.view(-1)
+
+    def f_hess(x):
+        x = x.view_as(x0).detach().requires_grad_(True)
+        with torch.enable_grad():
+            hess = autograd.functional.hessian(f, x)
+        hess = hess.view(x0.numel(), x0.numel())
+        if tikhonov > 0:
+            hess.diagonal().add_(tikhonov)
+        return hess
+
+    def dir_evaluate(x, t, d):
+        """directional evaluate. Used only for strong-wolfe line search"""
+        return f_with_grad(x.add(d, alpha=t))
+
+    # initial settings
+    x = x0.detach().view(-1)
+    if return_all:
+        allvecs = [x]
+    fval = x.new_tensor(-1.)
+    grad = x.new_full(x.shape, -1.)
+    nfev = 0  # number of function evals
+    n_iter = 0
+
+    if disp > 1:
+        fval = f(x)
+        print('initial fval: %0.4f' % fval)
+
+    def terminate(warnflag, msg):
+        if disp:
+            print(msg)
+            print("         Current function value: %f" % fval)
+            print("         Iterations: %d" % n_iter)
+            print("         Function evaluations: %d" % nfev)
+        result = OptimizeResult(fun=fval, jac=grad, nfev=nfev,
+                                status=warnflag, success=(warnflag==0),
+                                message=msg, x=x.view_as(x0), nit=n_iter)
+        if return_all:
+            result['allvecs'] = allvecs
+        return result
+
+
+    # begin optimization loop
+    for n_iter in range(1, max_iter + 1):
+
+        # ==================================================
+        #  Compute a search direction d by solving
+        #          H_f(x) d = - J_f(x)
+        #  with the true Hessian and Cholesky factorization
+        # ===================================================
+
+        # compute f(x), f'(x), f''(x)
+        fval, grad = f_with_grad(x)
+        hess = f_hess(x)
+        nfev += 1
+
+        # Compute search direction with Cholesky solve
+        d = grad.neg().unsqueeze(1)
+        try:
+            d = torch.cholesky_solve(d, torch.linalg.cholesky(hess))
+        except:
+            warnings.warn('cholesky factorization failed. Resorting to LU...')
+            d = torch.linalg.solve(hess, d)
+        d = d.squeeze(1)
+
+
+        # =====================================================
+        #  Perform variable update (with optional line search)
+        # =====================================================
+
+        if line_search == 'none':
+            update = d.mul(lr)
+            x = x + update
+            fval = f(x)
+        elif line_search == 'strong_wolfe':
+            # strong-wolfe line search
+            gtd = grad.mul(d).sum()
+            fval, grad, t, ls_nevals = \
+                strong_wolfe(dir_evaluate, x, lr, d, fval, grad, gtd)
+            grad = grad.view_as(x)
+            nfev += ls_nevals
+            update = d.mul(t)
+            x = x + update
+        else:
+            raise ValueError('invalid line_search option {}.'.format(line_search))
+
+        if disp > 1:
+            print('iter %3d - fval: %0.4f' % (n_iter, fval))
+        if callback is not None:
+            callback(x)
+        if return_all:
+            allvecs.append(x)
 
         # ==========================
         #  check for convergence
