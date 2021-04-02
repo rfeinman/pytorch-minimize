@@ -60,9 +60,6 @@ def fmin_newtoncg(
     if cg_max_iter is None:
         cg_max_iter = x0.numel() * 20
 
-
-
-
     def f_with_grad(x):
         x = x.view_as(x0).detach().requires_grad_(True)
         with torch.enable_grad():
@@ -72,8 +69,7 @@ def fmin_newtoncg(
 
     def dir_evaluate(x, t, d):
         """directional evaluate. Used only for strong-wolfe line search"""
-        x = x.add(d, alpha=t)
-        return f_with_grad(x)
+        return f_with_grad(x.add(d, alpha=t))
 
     # generalized dot product for CG that supports batch inputs
     # TODO: let the user specify dot fn?
