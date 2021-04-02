@@ -214,9 +214,9 @@ def fmin_bfgs(
             return terminate(0, _status_message['success'])
 
 
-        ########################
+        # ======================
         #   update parameter
-        ########################
+        # ======================
 
         if line_search == 'none':
             # no line search, move with fixed-step
@@ -240,9 +240,9 @@ def fmin_bfgs(
             callback(x_new)
 
 
-        ###################################################
+        # =================================================
         #   check conditions and update optimizer state
-        ###################################################
+        # =================================================
 
         s = x_new.sub(x)
         y = grad_new.sub(grad)
