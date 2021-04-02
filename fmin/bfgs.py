@@ -213,6 +213,11 @@ def fmin_bfgs(
         if gtd > -xtol:
             return terminate(0, _status_message['success'])
 
+
+        ########################
+        #   update parameter
+        ########################
+
         if line_search is None:
             # no line search, move with fixed-step
             x_new = x.add(d, alpha=t)
