@@ -110,7 +110,7 @@ class BFGS(HessianUpdateStrategy):
 @torch.no_grad()
 def fmin_bfgs(
         f, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
-        max_iter=None, line_search=None, gtol=1e-5, xtol=1e-9,
+        max_iter=None, line_search='strong_wolfe', gtol=1e-5, xtol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a multivariate function with BFGS or L-BFGS
 
@@ -132,9 +132,9 @@ def fmin_bfgs(
         Ignored if `low_mem=True` (L-BFGS implicitly parameterizes the inverse).
     max_iter : int, optional
         Maximum number of iterations to perform. Defaults to 200 * x0.numel()
-    line_search : str, optional
-        Line search specifier. `None` indicates no line search. The current
-        options are {'strong_wolfe'}.
+    line_search : str
+        Line search specifier. Currently the available options are
+        {'none', 'strong_wolfe'}.
     gtol : float
         Termination tolerance on 1st-order optimality (gradient magnitude)
     xtol : float
@@ -218,7 +218,7 @@ def fmin_bfgs(
         #   update parameter
         ########################
 
-        if line_search is None:
+        if line_search == 'none':
             # no line search, move with fixed-step
             x_new = x.add(d, alpha=t)
             fval_new, grad_new = f_with_grad(x_new)
