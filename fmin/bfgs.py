@@ -150,6 +150,11 @@ def fmin_bfgs(
     return_all : bool, optional
         Set to True to return a list of the best solution at each of the
         iterations.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
     """
     lr = float(lr)
     disp = int(disp)

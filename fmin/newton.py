@@ -18,7 +18,8 @@ def fmin_newtoncg(
         callback=None, disp=0, return_all=False):
     """
     Minimize a scalar function of one or more variables using the
-    Newton Conjugate Gradient method.
+    Newton-Raphson method, with Conjugate Gradient for the linear inverse
+    sub-problem.
 
     Parameters
     ----------
@@ -26,31 +27,36 @@ def fmin_newtoncg(
         Scalar objective function to minimize
     x0 : Tensor
         Initialization point
+    lr : float
+        Step size for parameter updates. If using line search, this will be
+        used as the initial step size for the search.
+    max_iter : int, optional
+        Maximum number of iterations to perform. Defaults to 200 * x0.numel()
+    cg_max_iter : int, optional
+        Maximum number of iterations per CG sub-problem. Recommended to leave
+        this at the default of 20 * x0.numel()
+    twice_diffable : bool
+        Whether to assume the function is twice continuously differentiable.
+        If True, hessian-vector products will be much faster.
+    line_search : str
+        Line search specifier. Currently the available options are
+        {'none', 'strong_wolfe'}.
     xtol : float
         Average relative error in solution `xopt` acceptable for
         convergence.
-    lr : float
-        Initial step size (learning rate) for each line search.
-    max_iter : int, optional
-        Maximum number of iterations to perform. Defaults to 200 * num_params
-    cg_max_iter : int, optional
-        Maximum number of iterations per CG sub-problem. Recommended to leave
-        this at the default of 20 * num_params
-    max_ls : int
-        Maximum number of steps per line search. If max_ls=0, then no line
-        search is performed. Otherwise, it's recommended to leave this at
-        the default value of 25
     callback : callable, optional
         Function to call after each iteration with the current parameter
         state, e.g. callback(x_k)
-    disp : int
-        Verbosity level. Set to > 0 to print convergence messages.
+    disp : int | bool
+        Display (verbosity) level. Set to >0 to print status messages.
     return_all : bool, optional
         Set to True to return a list of the best solution at each of the
         iterations.
-    twice_diffable : bool
-        Whether to assume the function is twice continuously differentiable.
-        If True, hessian-vector product computation will be much faster.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
     """
     lr = float(lr)
     disp = int(disp)
