@@ -1,6 +1,6 @@
 # PyTorch Minimize
 
-This library contains a collection of utilities for minimizing scalar functions of one or more variables in PyTorch. It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html).
+This library contains a collection of utilities for minimizing scalar functions of one or more variables in PyTorch. It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html). At the moment, only unconstrained minimization is supported.
 
 Author: Reuben Feinman
 
