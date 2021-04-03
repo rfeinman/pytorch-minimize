@@ -21,12 +21,12 @@ def minimize(
     assert method in ['bfgs', 'newton_cg', 'newton_exact']
     if options is None:
         options = {}
-    if tol is None:
-        options[_tolerance_keys[method]] = tol
-    options['max_iter'] = max_iter
-    options['callback'] = callback
-    options['disp'] = disp
-    options['return_all'] = return_all
+    if tol is not None:
+        options.setdefault(_tolerance_keys[method], tol)
+    options.setdefault('max_iter', max_iter)
+    options.setdefault('callback', callback)
+    options.setdefault('disp', disp)
+    options.setdefault('return_all', return_all)
 
     if method == 'bfgs':
         return fmin_bfgs(f, x0, **options)
