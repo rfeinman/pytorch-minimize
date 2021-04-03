@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import numpy as np
 import torch
 from torch import Tensor
 from scipy.optimize import OptimizeResult
@@ -181,7 +180,7 @@ def fmin_bfgs(
         with torch.enable_grad():
             fval = f(x)
         grad, = torch.autograd.grad(fval, x)
-        return float(fval), grad.view(-1)
+        return fval.detach(), grad.view(-1)
 
     def dir_evaluate(x, t, d):
         x = x.add(d, alpha=t)
@@ -271,11 +270,11 @@ def fmin_bfgs(
             return terminate(0, _status_message['success'])
 
         # convergence by insufficient progress
-        if s.norm(p=normp) <= xtol or abs(fval_new-fval) <= xtol:
+        if s.norm(p=normp) <= xtol or (fval_new-fval).abs() <= xtol:
             return terminate(0, _status_message['success'])
 
         # precision loss; exit
-        if not np.isfinite(fval):
+        if not fval.isfinite():
             return terminate(2, _status_message['pr_loss'])
 
         # update state
