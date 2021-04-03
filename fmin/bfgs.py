@@ -210,6 +210,13 @@ def fmin_bfgs(
     # BFGS iterations
     for n_iter in range(1, max_iter+1):
 
+        # ==================================
+        #   compute Quasi-Newton direction
+        # ==================================
+
+        if n_iter > 1:
+            d = hess.solve(grad)
+
         # directional derivative
         gtd = grad.dot(d)
 
@@ -245,32 +252,33 @@ def fmin_bfgs(
             callback(x_new)
 
 
-        # =================================================
-        #   check conditions and update optimizer state
-        # =================================================
+        # ================================
+        #   update hessian approximation
+        # ================================
 
         s = x_new.sub(x)
         y = grad_new.sub(grad)
+
+        hess.update(s, y)
+
+
+        # =========================================
+        #   check conditions and update buffers
+        # =========================================
 
         # convergence by 1st-order optimality
         if grad.norm(p=normp) <= gtol:
             return terminate(0, _status_message['success'])
 
         # convergence by insufficient progress
-        # TODO: is this a success?
         if s.norm(p=normp) <= xtol or abs(fval_new-fval) <= xtol:
             return terminate(0, _status_message['success'])
 
-        # precision loss
+        # precision loss; exit
         if not np.isfinite(fval):
             return terminate(2, _status_message['pr_loss'])
 
-        # update lbfgs memory
-        hess.update(s, y)
-
-        # compute quasi-newton direction
-        d = hess.solve(grad_new)
-
+        # update state
         fval = fval_new
         x.copy_(x_new)
         grad.copy_(grad_new)
