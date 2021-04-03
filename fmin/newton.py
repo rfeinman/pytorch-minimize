@@ -276,16 +276,14 @@ def fmin_newton_exact(
 
     # initial settings
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
+    fval, grad = f_with_grad(x)
+    if disp > 1:
+        print('initial fval: %0.4f' % fval)
     if return_all:
         allvecs = [x]
-    fval = x.new_tensor(-1.)
-    grad = x.new_full(x.shape, -1.)
-    nfev = 0  # number of function evals
+    nfev = 1  # number of function evals
     n_iter = 0
 
-    if disp > 1:
-        fval = f(x)
-        print('initial fval: %0.4f' % fval)
 
     def terminate(warnflag, msg):
         if disp:
@@ -310,10 +308,8 @@ def fmin_newton_exact(
         #  with the true Hessian and Cholesky factorization
         # ===================================================
 
-        # compute f(x), f'(x), f''(x)
-        fval, grad = f_with_grad(x)
+        # compute H_f(x)
         hess = f_hess(x)
-        nfev += 1
 
         # Compute search direction with Cholesky solve
         d = grad.neg().unsqueeze(1)
@@ -333,7 +329,8 @@ def fmin_newton_exact(
         if line_search == 'none':
             update = d.mul(lr)
             x = x + update
-            fval = f(x)
+            fval, grad = f_with_grad(x)
+            nfev += 1
         elif line_search == 'strong-wolfe':
             # strong-wolfe line search
             gtd = grad.mul(d).sum()
