@@ -23,7 +23,7 @@ def brent(fun, x, d, bounds=(0,10)):
     return res.x
 
 
-def backtracking(fun, x, t, d, f, g, tol=0.1, decay=0.98, max_ls=500, tmin=1e-5):
+def backtracking(fun, x, t, d, f, g, mu=0.1, decay=0.98, max_ls=500, tmin=1e-5):
     """
     Expects `fun` to take arguments {x, t, d} and return {f(x1), x1},
     where x1 is the new location after taking a step from x in direction d
@@ -34,7 +34,7 @@ def backtracking(fun, x, t, d, f, g, tol=0.1, decay=0.98, max_ls=500, tmin=1e-5)
     success = True
     for i in range(max_ls):
         f_new, x_new = fun(x, t, d)
-        if f_new <= f - tol * g.dot(x_new-x):
+        if f_new <= f + mu * g.mul(x_new-x).sum():
             break
         if t <= tmin:
             warnings.warn('step size has reached the minimum threshold.')
