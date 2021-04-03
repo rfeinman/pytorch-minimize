@@ -320,7 +320,8 @@ def fmin_newton_exact(
         try:
             d = torch.cholesky_solve(d, torch.linalg.cholesky(hess))
         except:
-            warnings.warn('cholesky factorization failed. Resorting to LU...')
+            warnings.warn('Cholesky factorization failed. Resorting to '
+                          'LU factorization...')
             d = torch.linalg.solve(hess, d)
         d = d.squeeze(1)
 
