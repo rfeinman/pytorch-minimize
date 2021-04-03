@@ -5,8 +5,8 @@ from .newton import fmin_newton_cg, fmin_newton_exact
 
 _tolerance_keys = {
     'bfgs': 'gtol',
-    'newton_cg': 'xtol',
-    'newton_exact': 'xtol'
+    'newton-cg': 'xtol',
+    'newton-exact': 'xtol'
 }
 
 def minimize(
@@ -18,7 +18,7 @@ def minimize(
 
     x0 = torch.as_tensor(x0)
     method = method.lower()
-    assert method in ['bfgs', 'newton_cg', 'newton_exact']
+    assert method in ['bfgs', 'newton-cg', 'newton-exact']
     if options is None:
         options = {}
     if tol is not None:
@@ -30,9 +30,9 @@ def minimize(
 
     if method == 'bfgs':
         return fmin_bfgs(f, x0, **options)
-    elif method == 'newton_cg':
+    elif method == 'newton-cg':
         return fmin_newton_cg(f, x0, **options)
-    elif method == 'newton_exact':
+    elif method == 'newton-exact':
         return fmin_newton_exact(f, x0, **options)
     else:
         raise RuntimeError('invalid method "{}" encountered.'.format(method))

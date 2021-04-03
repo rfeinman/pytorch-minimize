@@ -110,7 +110,7 @@ class BFGS(HessianUpdateStrategy):
 @torch.no_grad()
 def fmin_bfgs(
         f, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
-        max_iter=None, line_search='strong_wolfe', gtol=1e-5, xtol=1e-9,
+        max_iter=None, line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a multivariate function with BFGS or L-BFGS
 
@@ -228,7 +228,7 @@ def fmin_bfgs(
             x_new = x.add(d, alpha=t)
             fval_new, grad_new = f_with_grad(x_new)
             nfev += 1
-        elif line_search == 'strong_wolfe':
+        elif line_search == 'strong-wolfe':
             #  Determine step size via strong-wolfe line search
             fval_new, grad_new, t, ls_evals = \
                 strong_wolfe(dir_evaluate, x, t, d, fval, grad, gtd)

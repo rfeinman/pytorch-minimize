@@ -15,7 +15,7 @@ _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
 @torch.no_grad()
 def fmin_newton_cg(
         f, x0, lr=1., max_iter=None, cg_options=None,
-        twice_diffable=True, line_search='strong_wolfe', xtol=1e-5,
+        twice_diffable=True, line_search='strong-wolfe', xtol=1e-5,
         callback=None, disp=0, return_all=False):
     """
     Minimize a scalar function of one or more variables using the
@@ -167,7 +167,7 @@ def fmin_newton_cg(
             update = d.mul(lr)
             x = x + update
             fval = f(x)
-        elif line_search == 'strong_wolfe':
+        elif line_search == 'strong-wolfe':
             # strong-wolfe line search
             gtd = grad.mul(d).sum()
             fval, grad, t, ls_nevals = \
@@ -205,7 +205,7 @@ def fmin_newton_cg(
 
 @torch.no_grad()
 def fmin_newton_exact(
-        f, x0, lr=1., max_iter=None, line_search='strong_wolfe', xtol=1e-5,
+        f, x0, lr=1., max_iter=None, line_search='strong-wolfe', xtol=1e-5,
         tikhonov=0., callback=None, disp=0, return_all=False):
     """
     Minimize a scalar function of one or more variables using the
@@ -334,7 +334,7 @@ def fmin_newton_exact(
             update = d.mul(lr)
             x = x + update
             fval = f(x)
-        elif line_search == 'strong_wolfe':
+        elif line_search == 'strong-wolfe':
             # strong-wolfe line search
             gtd = grad.mul(d).sum()
             fval, grad, t, ls_nevals = \
