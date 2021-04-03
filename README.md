@@ -1,6 +1,8 @@
 # PyTorch Minimize
 
-This library contains a collection of utilities for minimizing scalar functions of one or more variables in PyTorch. It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html). At the moment, only unconstrained minimization is supported.
+This library contains a collection of utilities for minimizing scalar functions of one or more variables in PyTorch. 
+It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html). 
+At the moment, only unconstrained minimization is supported.
 
 Author: Reuben Feinman
 
@@ -31,7 +33,7 @@ __Examples:__ See the [Rosenbrock minimization notebook](https://github.com/rfei
 ## Motivation
 Although PyTorch offers many routines for stochastic optimization, utilities for deterministic optimization are scarce; only L-BFGS is included in the `optim` package, and it's modified for mini-batch training.
 
-MATLAB and SciPy are the industry standards for deterministic optimization. 
+MATLAB and SciPy are industry standards for deterministic optimization. 
 These libraries have a comprehensive set of routines; however, automatic differentiation is not supported. 
 Therefore, the user must specify 1st- and 2nd-order gradients explicitly (if they are known) or use finite-difference approximations.
 
