@@ -26,7 +26,7 @@ result = minimize(rosen, x0, method='newton-cg')
 
 __Solvers:__ BFGS, L-BFGS, Newton Conjugate Gradient (CG), Newton Exact
 
-__Examples:__ See `/examples/rosen_minimize.ipynb` for a demonstration of function minimization with a handful of different algorithms.
+__Examples:__ See the [Rosenbrock minimization notebook](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/rosen_minimize.ipynb) for a demonstration of function minimization with a handful of different algorithms.
 
 ## Motivation
 Although PyTorch offers many routines for stochastic optimization, utilities for deterministic optimization are scarce; only L-BFGS is included in the `optim` package, and it's modified for mini-batch training.
