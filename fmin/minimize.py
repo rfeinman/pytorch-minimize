@@ -13,10 +13,44 @@ _tolerance_keys = {
 def minimize(
         f, x0, method, max_iter=None, tol=None, options=None, callback=None,
         disp=0, return_all=False):
-    """A general-purpose minimization routine that calls one of the available
-    algorithms based on a "method" argument.
-    """
+    """Minimize a scalar function of one or more variables.
 
+    This is a general-purpose wrapper that calls one of the available
+    minimization routines based on a "method" argument.
+
+    Parameters
+    ----------
+    f : callable
+        Scalar objective function to minimize
+    x0 : Tensor
+        Initialization point
+    method : str
+        The minimization routine to use. Current options are
+        {'bfgs', 'l-bfgs', 'newton-cg', 'newton-exact'}.
+    max_iter : int, optional
+        Maximum number of iterations to perform. If unspecified, this will
+        be set to the default of the selected method.
+    tol : float
+        Tolerance for termination. For detailed control, use solver-specific
+        options.
+    options : dict, optional
+        A dictionary of keyword arguments to pass to the selected minimization
+        routine.
+    callback : callable, optional
+        Function to call after each iteration with the current parameter
+        state, e.g. callback(x)
+    disp : int | bool
+        Display (verbosity) level. Set to >0 to print status messages.
+    return_all : bool, optional
+        Set to True to return a list of the best solution at each of the
+        iterations.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
+
+    """
     x0 = torch.as_tensor(x0)
     method = method.lower()
     assert method in ['bfgs', 'l-bfgs', 'newton-cg', 'newton-exact']
