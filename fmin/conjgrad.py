@@ -23,8 +23,8 @@ def conjgrad(b, Adot, dot=None, max_iter=None, tol=1e-10, rtol=1e-1, disp=0,
 
     # initialize state
     x = torch.zeros_like(b)
-    r = b.neg()
-    p = b
+    r = b
+    p = r
     rs = dot(r, r)
     n_iter = 0
 
@@ -54,9 +54,9 @@ def conjgrad(b, Adot, dot=None, max_iter=None, tol=1e-10, rtol=1e-1, disp=0,
             return terminate(3)
         alpha = rs / curv
         x = x + alpha * p
-        r = r + alpha * Ap
+        r = r - alpha * Ap
         rs_new = dot(r, r)
-        p = - r + (rs_new / rs) * p
+        p = r + (rs_new / rs) * p
         rs = rs_new
         n_iter += 1
         if disp > 1:
