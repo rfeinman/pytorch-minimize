@@ -1,6 +1,6 @@
 # PyTorch Minimize
 
-This library contains a collection of utilities for minimizing scalar functions of one or more variables in Pytorch. It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html).
+This library contains a collection of utilities for minimizing scalar functions of one or more variables in PyTorch. It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html).
 
 ## Motivation
 Although PyTorch offers many routines for stochastic optimization, utilities for deterministic optimization are scarce; only L-BFGS is included in the `optim` package, and it's modified for mini-batch training.
@@ -10,4 +10,12 @@ These libraries have a comprehensive set of routines; however, automatic differe
 Therefore, the user must either specify Jacobian and Hessian functions explicitly (if they are known) or use finite-difference approximations.
 
 The motivation for this library is to offer a set of tools for deterministic optimization with analytical gradients via PyTorch's autograd.
+
+## Minimization Routines
+
+1. __BFGS.__
+   
+2. __Newton Conjugate Gradient (CG).__ Due to the use of reverse-mode automatic differentiation, computing explicit Hessian matrices with PyTorch's autograd is not very efficient. However, computing Hessian-vector products is fast (and it also saves a lot of memory). The Conjugate Gradient (CG) variant of the Newton-Raphson algorithm is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
+
+3. __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've included an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to LU factorization. This is not the safest resolution for indefinite Hessians and may be modified in the future.
 
