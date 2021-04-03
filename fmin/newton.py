@@ -85,7 +85,7 @@ def fmin_newton_cg(
     dot = lambda u,v: u.mul(v).sum(-1, keepdim=True)
 
     # initial settings
-    x = x0.detach()
+    x = x0.detach().clone(memory_format=torch.contiguous_format)
     if return_all:
         allvecs = [x]
     fval = x.new_tensor(-1.)
@@ -275,7 +275,7 @@ def fmin_newton_exact(
         return f_with_grad(x.add(d, alpha=t))
 
     # initial settings
-    x = x0.detach().view(-1)
+    x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
     if return_all:
         allvecs = [x]
     fval = x.new_tensor(-1.)

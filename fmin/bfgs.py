@@ -129,7 +129,7 @@ def fmin_bfgs(
         History size for L-BFGS hessian estimates. Ignored if `low_mem=False`.
     inv_hess : bool
         Whether to parameterize the inverse hessian vs. the hessian with BFGS.
-        Ignored if `low_mem=True` (L-BFGS implicitly parameterizes the inverse).
+        Ignored if `low_mem=True` (L-BFGS always parameterizes the inverse).
     max_iter : int, optional
         Maximum number of iterations to perform. Defaults to 200 * x0.numel()
     line_search : str
@@ -188,7 +188,7 @@ def fmin_bfgs(
         return f_with_grad(x)
 
     # compute initial f(x) and f'(x)
-    x = x0.detach().view(-1)
+    x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
     fval, grad = f_with_grad(x)
     nfev = 1
     if disp > 1:
@@ -203,7 +203,7 @@ def fmin_bfgs(
     if low_mem:
         hess = L_BFGS(x, history_size)
     else:
-        hess = BFGS(x, inverse=inv_hess)
+        hess = BFGS(x, inv_hess)
     d = grad.neg()
     t = min(1., grad.norm(p=1).reciprocal()) * lr
 
