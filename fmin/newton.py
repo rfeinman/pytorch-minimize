@@ -13,7 +13,7 @@ _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
 
 
 @torch.no_grad()
-def fmin_newtoncg(
+def fmin_newton_cg(
         f, x0, lr=1., max_iter=None, cg_max_iter=None,
         twice_diffable=True, line_search='strong_wolfe', xtol=1e-5,
         callback=None, disp=0, return_all=False):
@@ -201,7 +201,7 @@ def fmin_newtoncg(
 
 
 @torch.no_grad()
-def fmin_newton(
+def fmin_newton_exact(
         f, x0, lr=1., max_iter=None, line_search='strong_wolfe', xtol=1e-5,
         tikhonov=0., callback=None, disp=0, return_all=False):
     """
