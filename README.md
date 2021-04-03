@@ -34,10 +34,14 @@ __Examples:__ See the [Rosenbrock minimization notebook](https://github.com/rfei
 Although PyTorch offers many routines for stochastic optimization, utilities for deterministic optimization are scarce; only L-BFGS is included in the `optim` package, and it's modified for mini-batch training.
 
 MATLAB and SciPy are industry standards for deterministic optimization. 
-These libraries have a comprehensive set of routines; however, automatic differentiation is not supported. 
+These libraries have a comprehensive set of routines; however, automatic differentiation is not supported.* 
 Therefore, the user must specify 1st- and 2nd-order gradients explicitly (if they are known) or use finite-difference approximations.
 
 The motivation for this library is to offer a set of tools for deterministic optimization with analytical gradients via PyTorch's autograd.
+
+_
+
+*MATLAB offers minimal autograd support via the Deep Learning Toolbox, but the integration is not seamless: it requires alternative "dlarray" structures and only a [subset of functions](https://www.mathworks.com/help/deeplearning/ug/list-of-functions-with-dlarray-support.html) are supported.
 
 ## Minimization Routines
 
