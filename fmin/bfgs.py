@@ -162,19 +162,6 @@ def fmin_bfgs(
     if low_mem and not inv_hess:
         raise ValueError('inv_hess=False is not available for L-BFGS.')
 
-    def terminate(warnflag, msg):
-        if disp:
-            print(msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % n_iter)
-            print("         Function evaluations: %d" % nfev)
-        result = OptimizeResult(fun=fval, jac=grad, nfev=nfev,
-                                status=warnflag, success=(warnflag==0),
-                                message=msg, x=x.view_as(x0), nit=n_iter)
-        if return_all:
-            result['allvecs'] = allvecs
-        return result
-
     def f_with_grad(x):
         x = x.view_as(x0).detach().requires_grad_(True)
         with torch.enable_grad():
@@ -195,9 +182,6 @@ def fmin_bfgs(
     if return_all:
         allvecs = [x]
 
-    if grad.norm(p=normp) <= gtol:
-        return terminate(0, _status_message['success'])
-
     # initial settings
     if low_mem:
         hess = L_BFGS(x, history_size)
@@ -205,6 +189,24 @@ def fmin_bfgs(
         hess = BFGS(x, inv_hess)
     d = grad.neg()
     t = min(1., grad.norm(p=1).reciprocal()) * lr
+
+    # termination func
+    def terminate(warnflag, msg):
+        if disp:
+            print(msg)
+            print("         Current function value: %f" % fval)
+            print("         Iterations: %d" % n_iter)
+            print("         Function evaluations: %d" % nfev)
+        result = OptimizeResult(fun=fval, jac=grad, nfev=nfev,
+                                status=warnflag, success=(warnflag==0),
+                                message=msg, x=x.view_as(x0), nit=n_iter)
+        if return_all:
+            result['allvecs'] = allvecs
+        return result
+
+    # initial convergence check
+    if grad.norm(p=normp) <= gtol:
+        return terminate(0, _status_message['success'])
 
     # BFGS iterations
     for n_iter in range(1, max_iter+1):
