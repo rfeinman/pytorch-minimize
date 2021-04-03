@@ -16,8 +16,16 @@ class HessianUpdateStrategy(ABC):
         pass
 
     @abstractmethod
-    def update(self, s, y):
+    def _update(self, s, y, rho_inv):
         pass
+
+    def update(self, s, y):
+        rho_inv = y.dot(s)
+        if rho_inv <= 1e-10:
+            # curvature is negative; do not update
+            return
+        self._update(s, y, rho_inv)
+        self.n_updates += 1
 
 
 class L_BFGS(HessianUpdateStrategy):
@@ -43,13 +51,7 @@ class L_BFGS(HessianUpdateStrategy):
 
         return d
 
-    def update(self, s, y):
-        rho_inv = y.dot(s)
-        if rho_inv <= 1e-10:
-            # curvature is negative; do not update
-            return
-
-        self.n_updates += 1
+    def _update(self, s, y, rho_inv):
         if len(self.y) == self.history_size:
             self.y.pop(0)
             self.s.pop(0)
@@ -79,13 +81,7 @@ class BFGS(HessianUpdateStrategy):
                 torch.cholesky(self.B)
             ).squeeze(1)
 
-    def update(self, s, y):
-        rho_inv = y.dot(s)
-        if rho_inv <= 1e-10:
-            # curvature is negative; do not update
-            return
-
-        self.n_updates += 1
+    def _update(self, s, y, rho_inv):
         rho = rho_inv.reciprocal()
         if self.inverse:
             torch.addr(
