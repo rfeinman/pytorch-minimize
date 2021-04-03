@@ -10,8 +10,8 @@ _status_messages = {
 }
 
 
-def conjgrad(b, Adot, dot=None, x=None, max_iter=None, tol=1e-10, rtol=1e-1, disp=0,
-             return_info=False):
+def conjgrad(b, Adot, dot=None, x=None, max_iter=None, tol=1e-10, rtol=1e-1,
+             disp=0, return_info=False):
     if max_iter is None:
         max_iter = 20 * b.numel()
     if dot is None:
@@ -24,11 +24,11 @@ def conjgrad(b, Adot, dot=None, x=None, max_iter=None, tol=1e-10, rtol=1e-1, dis
     # initialize state
     if x is None:
         x = torch.zeros_like(b)
-        r = b
+        r = b.clone()
     else:
         assert x.shape == b.shape
         r = b - Adot(x)
-    p = r
+    p = r.clone()
     rs = dot(r, r)
     n_iter = 0
 
@@ -57,10 +57,10 @@ def conjgrad(b, Adot, dot=None, x=None, max_iter=None, tol=1e-10, rtol=1e-1, dis
                 x = - rs / curv * b
             return terminate(3)
         alpha = rs / curv
-        x = x + alpha * p
-        r = r - alpha * Ap
+        x.addcmul_(alpha, p)
+        r.addcmul_(alpha, Ap, value=-1)
         rs_new = dot(r, r)
-        p = r + (rs_new / rs) * p
+        p.mul_(rs_new / rs).add_(r)
         rs = rs_new
         n_iter += 1
         if disp > 1:
