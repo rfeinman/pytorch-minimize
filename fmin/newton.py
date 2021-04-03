@@ -14,7 +14,7 @@ _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
 
 @torch.no_grad()
 def fmin_newton_cg(
-        f, x0, lr=1., max_iter=None, cg_max_iter=None,
+        f, x0, lr=1., max_iter=None, cg_options=None,
         twice_diffable=True, line_search='strong_wolfe', xtol=1e-5,
         callback=None, disp=0, return_all=False):
     """
@@ -33,9 +33,10 @@ def fmin_newton_cg(
         used as the initial step size for the search.
     max_iter : int, optional
         Maximum number of iterations to perform. Defaults to 200 * x0.numel()
-    cg_max_iter : int, optional
-        Maximum number of iterations per CG sub-problem. Recommended to leave
-        this at the default of 20 * x0.numel()
+    cg_options : dict, optional
+        A dictionary of keyword arguments to pass to the CG solver. Available
+        arguments are {'max_iter', 'rtol', 'tol'}. In general it is
+        recommended to leave these at their default values.
     twice_diffable : bool
         Whether to assume the function is twice continuously differentiable.
         If True, hessian-vector products will be much faster.
@@ -64,8 +65,10 @@ def fmin_newton_cg(
     xtol = x0.numel() * xtol
     if max_iter is None:
         max_iter = x0.numel() * 200
-    if cg_max_iter is None:
-        cg_max_iter = x0.numel() * 20
+    if cg_options is None:
+        cg_options = {}
+    cg_options.setdefault('max_iter', x0.numel() * 20)
+    cg_options.setdefault('rtol', 1.0)
 
     def f_with_grad(x):
         x = x.detach().requires_grad_(True)
@@ -144,7 +147,7 @@ def fmin_newton_cg(
         # Compute search direction with conjugate gradient (GG)
         d, cg_iters, cg_status = conjgrad(
             b=grad.detach().neg(), Adot=hvp, dot=dot,
-            max_iter=cg_max_iter, rtol=1., return_info=True
+            return_info=True, **cg_options
         )
         ncg += cg_iters
         if cg_status == 4:
@@ -250,9 +253,6 @@ def fmin_newton_exact(
     xtol = x0.numel() * xtol
     if max_iter is None:
         max_iter = x0.numel() * 200
-    if x0.dim() > 1:
-        warnings.warn('Newton algorithm does not support tensors with dim > 1.'
-                      'The input will be flattened.')
 
     def f_with_grad(x):
         x = x.view_as(x0).detach().requires_grad_(True)
