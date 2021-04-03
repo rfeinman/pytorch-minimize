@@ -7,13 +7,13 @@ Although PyTorch offers many routines for stochastic optimization, utilities for
 
 MATLAB and SciPy are the industry standards for deterministic optimization. 
 These libraries have a comprehensive set of routines; however, automatic differentiation is not supported. 
-Therefore, the user must either specify Jacobian and Hessian functions explicitly (if they are known) or use finite-difference approximations.
+Therefore, the user must specify 1st- and 2nd-order gradients explicitly (if they are known) or use finite-difference approximations.
 
 The motivation for this library is to offer a set of tools for deterministic optimization with analytical gradients via PyTorch's autograd.
 
 ## Minimization Routines
 
-1. __BFGS.__
+1. __BFGS.__ BFGS is a cannonical quasi-Newton method for unconstrained optimization. I've implemented both the standard BFGS and the "limited memory" L-BFGS, accessed from the same function with argument `low_mem=True`. For smaller scale problems where memory is not a major concern, BFGS should be significantly faster than L-BFGS since it avoids for loops and uses pure torch matrix math. This is especially the case on CUDA.
    
 2. __Newton Conjugate Gradient (CG).__ Due to the use of reverse-mode automatic differentiation, computing explicit Hessian matrices with PyTorch's autograd is not very efficient. However, computing Hessian-vector products is fast (and it also saves a lot of memory). The Conjugate Gradient (CG) variant of the Newton-Raphson algorithm is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
 
