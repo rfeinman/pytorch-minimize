@@ -1,3 +1,4 @@
+import warnings
 import torch
 
 from .bfgs import fmin_bfgs
@@ -18,7 +19,7 @@ def minimize(
 
     x0 = torch.as_tensor(x0)
     method = method.lower()
-    assert method in ['bfgs', 'newton-cg', 'newton-exact']
+    assert method in ['bfgs', 'l-bfgs', 'newton-cg', 'newton-exact']
     if options is None:
         options = {}
     if tol is not None:
@@ -28,7 +29,12 @@ def minimize(
     options.setdefault('disp', disp)
     options.setdefault('return_all', return_all)
 
-    if method == 'bfgs':
+    if method in ['bfgs', 'l-bfgs']:
+        if method == 'bfgs' and options.get('low_mem', False):
+            warnings.warn("Usage {method='bfgs', low_mem=True} is "
+                          "not recommended. Use {method='l-bfgs'} instead.")
+            method = 'l-bfgs'
+        options['low_mem'] = method == 'l-bfgs'
         return fmin_bfgs(f, x0, **options)
     elif method == 'newton-cg':
         return fmin_newton_cg(f, x0, **options)
