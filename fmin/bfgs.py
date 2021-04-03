@@ -76,10 +76,8 @@ class BFGS(HessianUpdateStrategy):
         if self.inverse:
             return torch.matmul(self.H, grad.neg())
         else:
-            return torch.cholesky_solve(
-                grad.neg().unsqueeze(1),
-                torch.cholesky(self.B)
-            ).squeeze(1)
+            return torch.cholesky_solve(grad.neg().unsqueeze(1),
+                                        torch.cholesky(self.B)).squeeze(1)
 
     def _update(self, s, y, rho_inv):
         rho = rho_inv.reciprocal()
