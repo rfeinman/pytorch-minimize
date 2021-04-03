@@ -10,10 +10,12 @@ _status_messages = {
 }
 
 
-def conjgrad(b, Adot, dot, max_iter=None, tol=1e-10, rtol=1e-1, disp=0,
+def conjgrad(b, Adot, dot=None, max_iter=None, tol=1e-10, rtol=1e-1, disp=0,
              return_info=False):
     if max_iter is None:
         max_iter = 20 * b.numel()
+    if dot is None:
+        dot = lambda u,v: u.mul(v).sum()
     disp = int(disp)
     b_norm = b.norm(p=1)
     termcond = rtol * b_norm * b_norm.sqrt().clamp(0, 0.5)
@@ -36,6 +38,8 @@ def conjgrad(b, Adot, dot, max_iter=None, tol=1e-10, rtol=1e-1, disp=0,
 
     # iterate
     while n_iter < max_iter:
+        if r.norm(p=2) < tol:
+            return terminate(0)
         if r.norm(p=1) <= termcond:
             return terminate(1)
         Ap = Adot(p)
@@ -52,11 +56,9 @@ def conjgrad(b, Adot, dot, max_iter=None, tol=1e-10, rtol=1e-1, disp=0,
         x = x + alpha * p
         r = r + alpha * Ap
         rs_new = dot(r, r)
-        n_iter += 1
-        if r.norm(p=2) < tol:
-            return terminate(0)
         p = - r + (rs_new / rs) * p
         rs = rs_new
+        n_iter += 1
         if disp > 1:
             print('iter: %i - rs: %0.4f' % (n_iter, rs.sum()))
 
