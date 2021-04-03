@@ -39,7 +39,7 @@ The motivation for this library is to offer a set of tools for deterministic opt
 
 ## Minimization Routines
 
-1. __BFGS/L-BFGS.__ BFGS is a cannonical quasi-Newton method for unconstrained optimization. I've implemented both the standard BFGS and the "limited memory" L-BFGS. For smaller scale problems where memory is not a concern, BFGS should be significantly faster than L-BFGS (especially on CUDA) since it avoids Python for loops and uses pure torch.
+1. __BFGS/L-BFGS.__ BFGS is a cannonical quasi-Newton method for unconstrained optimization. I've implemented both the standard BFGS and the "limited memory" L-BFGS. For smaller scale problems where memory is not a concern, BFGS should be significantly faster than L-BFGS (especially on CUDA) since it avoids Python for loops and instead uses pure torch.
    
 2. __Newton Conjugate Gradient (CG).__ The Newton-Raphson method is a staple of unconstrained optimization. Due to the use of reverse-mode automatic differentiation, computing explicit Hessian matrices in PyTorch is not very efficient; however, computing Hessian-vector products is fast (and it also saves a lot of memory). The Conjugate Gradient (CG) variant of the Newton-Raphson algorithm is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
 
