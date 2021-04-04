@@ -45,7 +45,7 @@ The motivation for this library is to offer a set of tools for deterministic opt
 
 _
 
-*MATLAB offers minimal autograd support via the Deep Learning Toolbox, but the integration is not seamless: it requires alternative "dlarray" structures and only a [subset of functions](https://www.mathworks.com/help/deeplearning/ug/list-of-functions-with-dlarray-support.html) are supported.
+*MATLAB offers minimal autograd support via the Deep Learning Toolbox, but the integration is not seamless: data must be converted to "dlarray" structures, and only a [subset of functions](https://www.mathworks.com/help/deeplearning/ug/list-of-functions-with-dlarray-support.html) are supported.
 
 ## Minimization Routines
 
