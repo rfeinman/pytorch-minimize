@@ -46,7 +46,10 @@ The motivation for this library is to offer a set of tools for deterministic opt
 
 _
 
-*MATLAB offers minimal autograd support via the Deep Learning Toolbox, but the integration is not seamless: data must be converted to "dlarray" structures, and only a [subset of functions](https://www.mathworks.com/help/deeplearning/ug/list-of-functions-with-dlarray-support.html) are supported. Furthermore, derivative modules must still be build and provided as function handles to the solver. Pytorch-minimize uses autograd behind the scenes for all functions, so derivative handles need never be provided.
+*MATLAB offers minimal autograd support via the Deep Learning Toolbox, but the integration is not seamless: data must be converted to "dlarray" structures, and only a [subset of functions](https://www.mathworks.com/help/deeplearning/ug/list-of-functions-with-dlarray-support.html) are supported.
+Furthermore, derivatives must still be constructed and provided as function handles to the solver. 
+Pytorch-minimize uses autograd to compute derivatives seamlessly behind the scenes, so all you ever need to provide is your function.
+
 
 ## Minimization Routines
 
