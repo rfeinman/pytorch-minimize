@@ -4,6 +4,7 @@ from scipy.optimize.optimize import _status_message
 from torch import Tensor
 import torch
 import torch.autograd as autograd
+from torch._vmap_internals import _vmap
 
 from .line_search import strong_wolfe
 from .conjgrad import conjgrad
@@ -253,30 +254,33 @@ def fmin_newton_exact(
     xtol = x0.numel() * xtol
     if max_iter is None:
         max_iter = x0.numel() * 200
+    # identity matrix buffer to use for hessian computation
+    I = torch.eye(x0.numel(), dtype=x0.dtype, device=x0.device)
 
-    def f_with_grad(x):
+    def dir_evaluate(x, t, d):
+        """directional evaluate. Used only for strong-wolfe line search"""
+        x = x.add(d, alpha=t)
         x = x.view_as(x0).detach().requires_grad_(True)
         with torch.enable_grad():
             fval = f(x)
         grad, = autograd.grad(fval, x)
         return fval.detach(), grad.view(-1)
 
-    def f_hess(x):
+    def f_with_hess(x):
         x = x.view_as(x0).detach().requires_grad_(True)
         with torch.enable_grad():
-            hess = autograd.functional.hessian(f, x)
+            fval = f(x)
+            grad = autograd.grad(fval, x, create_graph=True)[0].view(-1)
+            hess = _vmap(lambda v: autograd.grad(grad, x, v)[0])(I)
         hess = hess.view(x0.numel(), x0.numel())
         if tikhonov > 0:
             hess.diagonal().add_(tikhonov)
-        return hess
 
-    def dir_evaluate(x, t, d):
-        """directional evaluate. Used only for strong-wolfe line search"""
-        return f_with_grad(x.add(d, alpha=t))
+        return fval.detach(), grad.detach(), hess
 
     # initial settings
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
-    fval, grad = f_with_grad(x)
+    fval, grad, hess = f_with_hess(x)
     if disp > 1:
         print('initial fval: %0.4f' % fval)
     if return_all:
@@ -308,9 +312,6 @@ def fmin_newton_exact(
         #  with the true Hessian and Cholesky factorization
         # ===================================================
 
-        # compute H_f(x)
-        hess = f_hess(x)
-
         # Compute search direction with Cholesky solve
         d = grad.neg().unsqueeze(1)
         try:
@@ -329,19 +330,23 @@ def fmin_newton_exact(
         if line_search == 'none':
             update = d.mul(lr)
             x = x + update
-            fval, grad = f_with_grad(x)
-            nfev += 1
         elif line_search == 'strong-wolfe':
             # strong-wolfe line search
             gtd = grad.mul(d).sum()
-            fval, grad, t, ls_nevals = \
+            _, _, t, ls_nevals = \
                 strong_wolfe(dir_evaluate, x, lr, d, fval, grad, gtd)
-            grad = grad.view_as(x)
             nfev += ls_nevals
             update = d.mul(t)
             x = x + update
         else:
             raise ValueError('invalid line_search option {}.'.format(line_search))
+
+        # ===================================
+        #  Re-evaluate func/Jacobian/Hessian
+        # ===================================
+
+        fval, grad, hess = f_with_hess(x)
+        nfev += 1
 
         if disp > 1:
             print('iter %3d - fval: %0.4f' % (n_iter, fval))
