@@ -10,12 +10,14 @@ _status_messages = {
 }
 
 
-def conjgrad(b, Adot, dot=None, x=None, max_iter=None, tol=1e-10, rtol=1e-1,
-             disp=0, return_info=False):
+def conjgrad(b, Adot, dot=None, x=None, Mdot=None, max_iter=None, tol=1e-10,
+             rtol=1e-1, disp=0, return_info=False):
     if max_iter is None:
         max_iter = 20 * b.numel()
     if dot is None:
         dot = lambda u,v: u.mul(v).sum()
+    if Mdot is None:
+        Mdot = lambda u: u
     disp = int(disp)
     b_norm = b.norm(p=1)
     termcond = rtol * b_norm * b_norm.sqrt().clamp(0, 0.5)
@@ -28,8 +30,9 @@ def conjgrad(b, Adot, dot=None, x=None, max_iter=None, tol=1e-10, rtol=1e-1,
     else:
         assert x.shape == b.shape
         r = b - Adot(x)
-    p = r.clone()
-    rs = dot(r, r)
+    z = Mdot(r)
+    p = z.clone()
+    rs = dot(r, z)
     n_iter = 0
 
     # termination func
@@ -59,8 +62,9 @@ def conjgrad(b, Adot, dot=None, x=None, max_iter=None, tol=1e-10, rtol=1e-1,
         alpha = rs / curv
         x.addcmul_(alpha, p)
         r.addcmul_(alpha, Ap, value=-1)
-        rs_new = dot(r, r)
-        p.mul_(rs_new / rs).add_(r)
+        z = Mdot(r)
+        rs_new = dot(r, z)
+        p.mul_(rs_new / rs).add_(z)
         rs = rs_new
         n_iter += 1
         if disp > 1:
