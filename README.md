@@ -51,3 +51,10 @@ _
 
 3. __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to LU factorization. This is not the safest resolution for ill-conditioned Hessians and it may be modified in the future.
 
+## Examples
+
+The [Rosenbrock minimization tutorial](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/rosen_minimize.ipynb) demonstrates how to use pytorch-minimize to find the minimum of a scalar-valued function of multiple variables using various optimization strategies.
+
+In addition, the [SciPy benchmark](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/scipy_benchmark.py) provides a comparison of pytorch-minimize solvers to their analogous solvers from the `scipy.optimize` library. 
+For those transitioning from scipy, this script will help get a feel for the design of the current library. 
+Unlike scipy, jacobian and hessian functions need not be provided to pytorch-minimize solvers, and numerical approximations are never used.
