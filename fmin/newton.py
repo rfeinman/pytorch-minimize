@@ -7,10 +7,58 @@ import torch.autograd as autograd
 from torch._vmap_internals import _vmap
 
 from .line_search import strong_wolfe
-from .conjgrad import conjgrad
 
 _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
                              "Hessian is not positive definite."
+
+
+def _cg_iters(grad, hvp, max_iter, norm_p=1):
+    """A CG solver specialized for the NewtonCG sub-problem.
+
+    Derived from Algorithm 7.1 of "Numerical Optimization (2nd Ed.)"
+    (Nocedal & Wright, 2006; pp. 169)
+    """
+    # generalized dot product that supports batch inputs
+    # TODO: let the user specify dot fn?
+    dot = lambda u,v: u.mul(v).sum(-1, keepdim=True)
+
+    g_norm = grad.norm(p=norm_p)
+    tol = g_norm * g_norm.sqrt().clamp(0, 0.5)
+    eps = torch.finfo(grad.dtype).eps
+    n_iter = 0  # TODO: remove?
+    maxiter_reached = False
+
+    # initialize state and iterate
+    x = torch.zeros_like(grad)
+    r = grad.clone()
+    p = grad.neg()
+    rs = dot(r, r)
+    for n_iter in range(max_iter):
+        if r.norm(p=norm_p) < tol:
+            break
+        Bp = hvp(p)
+        curv = dot(p, Bp)
+        curv_sum = curv.sum()
+        if curv_sum < 0:
+            if n_iter == 0:
+                # hessian is not positive-definite; fall back to steepest
+                # descent direction (scaled by Rayleigh quotient)
+                x = grad.mul(rs / curv)
+                #x = grad.neg()
+            break
+        elif curv_sum <= 3 * eps:
+            break
+        alpha = rs / curv
+        x.addcmul_(alpha, p)
+        r.addcmul_(alpha, Bp)
+        rs_new = dot(r, r)
+        p.mul_(rs_new / rs).sub_(r)
+        rs = rs_new
+    else:
+        # curvature keeps increasing; bail
+        maxiter_reached = True
+
+    return x, n_iter, maxiter_reached
 
 
 @torch.no_grad()
@@ -69,7 +117,7 @@ def fmin_newton_cg(
     if cg_options is None:
         cg_options = {}
     cg_options.setdefault('max_iter', x0.numel() * 20)
-    cg_options.setdefault('rtol', 1.0)
+    cg_options.setdefault('norm_p', 1)
 
     def f_with_grad(x):
         x = x.detach().requires_grad_(True)
@@ -83,10 +131,6 @@ def fmin_newton_cg(
         x = x.add(d, alpha=t).view_as(x0)
         fval, grad = f_with_grad(x)
         return fval, grad.view(-1)
-
-    # generalized dot product for CG that supports batch inputs
-    # TODO: let the user specify dot fn?
-    dot = lambda u,v: u.mul(v).sum(-1, keepdim=True)
 
     # initial settings
     x = x0.detach().clone(memory_format=torch.contiguous_format)
@@ -146,12 +190,9 @@ def fmin_newton_cg(
             hvp = lambda v: autograd.grad(g_x, g_grad, v, retain_graph=True)[0]
 
         # Compute search direction with conjugate gradient (GG)
-        d, cg_iters, cg_status = conjgrad(
-            b=grad.detach().neg(), Adot=hvp, dot=dot,
-            return_info=True, **cg_options
-        )
+        d, cg_iters, cg_fail = _cg_iters(grad.detach(), hvp, **cg_options)
         ncg += cg_iters
-        if cg_status == 4:
+        if cg_fail:
             return terminate(3, _status_message['cg_warn'])
 
         # Free the autograd graph
