@@ -25,6 +25,9 @@ result = minimize(rosen, x0, method='bfgs')
 
 # Newton Conjugate Gradient
 result = minimize(rosen, x0, method='newton-cg')
+
+# Newton Exact
+result = minimize(rosen, x0, method='newton-exact')
 ```
 
 __Solvers:__ BFGS, L-BFGS, Newton Conjugate Gradient (CG), Newton Exact
