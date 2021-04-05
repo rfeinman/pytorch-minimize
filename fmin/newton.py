@@ -40,9 +40,10 @@ def _cg_iters(grad, hvp, max_iter, normp=1):
         curv = dot(p, Bp)
         curv_sum = curv.sum()
         if curv_sum < 0:
+            # hessian is not positive-definite
             if n_iter == 0:
-                # hessian is not positive-definite; fall back to steepest
-                # descent direction (scaled by Rayleigh quotient)
+                # if first step, fall back to steepest descent direction
+                # (scaled by Rayleigh quotient)
                 x = grad.mul(rs / curv)
                 #x = grad.neg()
             break
