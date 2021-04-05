@@ -12,7 +12,7 @@ _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
                              "Hessian is not positive definite."
 
 
-def _cg_iters(grad, hvp, max_iter, norm_p=1):
+def _cg_iters(grad, hvp, max_iter, normp=1):
     """A CG solver specialized for the NewtonCG sub-problem.
 
     Derived from Algorithm 7.1 of "Numerical Optimization (2nd Ed.)"
@@ -22,7 +22,7 @@ def _cg_iters(grad, hvp, max_iter, norm_p=1):
     # TODO: let the user specify dot fn?
     dot = lambda u,v: u.mul(v).sum(-1, keepdim=True)
 
-    g_norm = grad.norm(p=norm_p)
+    g_norm = grad.norm(p=normp)
     tol = g_norm * g_norm.sqrt().clamp(0, 0.5)
     eps = torch.finfo(grad.dtype).eps
     n_iter = 0  # TODO: remove?
@@ -34,7 +34,7 @@ def _cg_iters(grad, hvp, max_iter, norm_p=1):
     p = grad.neg()
     rs = dot(r, r)
     for n_iter in range(max_iter):
-        if r.norm(p=norm_p) < tol:
+        if r.norm(p=normp) < tol:
             break
         Bp = hvp(p)
         curv = dot(p, Bp)
@@ -63,9 +63,9 @@ def _cg_iters(grad, hvp, max_iter, norm_p=1):
 
 @torch.no_grad()
 def fmin_newton_cg(
-        f, x0, lr=1., max_iter=None, cg_options=None,
+        f, x0, lr=1., max_iter=None, cg_max_iter=None,
         twice_diffable=True, line_search='strong-wolfe', xtol=1e-5,
-        callback=None, disp=0, return_all=False):
+        normp=1, callback=None, disp=0, return_all=False):
     """
     Minimize a scalar function of one or more variables using the
     Newton-Raphson method, with Conjugate Gradient for the linear inverse
@@ -82,10 +82,9 @@ def fmin_newton_cg(
         used as the initial step size for the search.
     max_iter : int, optional
         Maximum number of iterations to perform. Defaults to 200 * x0.numel()
-    cg_options : dict, optional
-        A dictionary of keyword arguments to pass to the CG solver. Available
-        arguments are {'max_iter', 'rtol', 'tol'}. In general it is
-        recommended to leave these at their default values.
+    cg_max_iter : int, optional
+        Maximum number of iterations for CG subproblem. Recommended to
+        leave this at the default of 20 * x0.numel()
     twice_diffable : bool
         Whether to assume the function is twice continuously differentiable.
         If True, hessian-vector products will be much faster.
@@ -95,6 +94,9 @@ def fmin_newton_cg(
     xtol : float
         Average relative error in solution `xopt` acceptable for
         convergence.
+    normp : int | float | str
+        The norm type to use for termination conditions. Can be any value
+        supported by `torch.norm` p argument.
     callback : callable, optional
         Function to call after each iteration with the current parameter
         state, e.g. callback(x_k)
@@ -114,10 +116,8 @@ def fmin_newton_cg(
     xtol = x0.numel() * xtol
     if max_iter is None:
         max_iter = x0.numel() * 200
-    if cg_options is None:
-        cg_options = {}
-    cg_options.setdefault('max_iter', x0.numel() * 20)
-    cg_options.setdefault('norm_p', 1)
+    if cg_max_iter is None:
+        cg_max_iter = x0.numel() * 20
 
     def f_with_grad(x):
         x = x.detach().requires_grad_(True)
@@ -190,7 +190,7 @@ def fmin_newton_cg(
             hvp = lambda v: autograd.grad(g_x, g_grad, v, retain_graph=True)[0]
 
         # Compute search direction with conjugate gradient (GG)
-        d, cg_iters, cg_fail = _cg_iters(grad.detach(), hvp, **cg_options)
+        d, cg_iters, cg_fail = _cg_iters(grad.detach(), hvp, cg_max_iter, normp)
         ncg += cg_iters
         if cg_fail:
             return terminate(3, _status_message['cg_warn'])
@@ -234,7 +234,7 @@ def fmin_newton_cg(
         #  check for convergence
         # ==========================
 
-        if update.norm(p=1) <= xtol:
+        if update.norm(p=normp) <= xtol:
             return terminate(0, _status_message['success'])
 
         if not fval.isfinite():
@@ -248,7 +248,7 @@ def fmin_newton_cg(
 @torch.no_grad()
 def fmin_newton_exact(
         f, x0, lr=1., max_iter=None, line_search='strong-wolfe', xtol=1e-5,
-        tikhonov=0., callback=None, disp=0, return_all=False):
+        normp=1, tikhonov=0., callback=None, disp=0, return_all=False):
     """
     Minimize a scalar function of one or more variables using the
     Newton-Raphson method.
@@ -274,6 +274,9 @@ def fmin_newton_exact(
     xtol : float
         Average relative error in solution `xopt` acceptable for
         convergence.
+    normp : int | float | str
+        The norm type to use for termination conditions. Can be any value
+        supported by `torch.norm` p argument.
     tikhonov : float
         Optional diagonal regularization (Tikhonov) parameter for the Hessian.
     callback : callable, optional
@@ -295,7 +298,7 @@ def fmin_newton_exact(
     xtol = x0.numel() * xtol
     if max_iter is None:
         max_iter = x0.numel() * 200
-    # identity matrix buffer to use for hessian computation
+    # identity matrix buffer for hessian computation
     I = torch.eye(x0.numel(), dtype=x0.dtype, device=x0.device)
 
     def dir_evaluate(x, t, d):
@@ -400,7 +403,7 @@ def fmin_newton_exact(
         #  check for convergence
         # ==========================
 
-        if update.norm(p=1) <= xtol:
+        if update.norm(p=normp) <= xtol:
             return terminate(0, _status_message['success'])
 
         if not fval.isfinite():
