@@ -249,7 +249,8 @@ def fmin_newton_cg(
 @torch.no_grad()
 def fmin_newton_exact(
         f, x0, lr=1., max_iter=None, line_search='strong-wolfe', xtol=1e-5,
-        normp=1, tikhonov=0., callback=None, disp=0, return_all=False):
+        normp=1, tikhonov=0., handle_npd='grad', callback=None, disp=0,
+        return_all=False):
     """
     Minimize a scalar function of one or more variables using the
     Newton-Raphson method.
@@ -280,6 +281,11 @@ def fmin_newton_exact(
         supported by `torch.norm` p argument.
     tikhonov : float
         Optional diagonal regularization (Tikhonov) parameter for the Hessian.
+    handle_npd : str
+        Mode for handling non-positive definite hessian matrices. Can be one
+        of the following:
+            'grad' : use steepest descent direction (gradient)
+            'lu' : solve the inverse hessian with LU factorization
     callback : callable, optional
         Function to call after each iteration with the current parameter
         state, e.g. callback(x_k)
@@ -358,14 +364,18 @@ def fmin_newton_exact(
         # ===================================================
 
         # Compute search direction with Cholesky solve
-        d = grad.neg().unsqueeze(1)
         try:
-            d = torch.cholesky_solve(d, torch.linalg.cholesky(hess))
+            d = torch.cholesky_solve(grad.neg().unsqueeze(1),
+                                     torch.linalg.cholesky(hess)).squeeze(1)
         except:
-            warnings.warn('Cholesky factorization failed. Resorting to '
-                          'LU factorization...')
-            d = torch.linalg.solve(hess, d)
-        d = d.squeeze(1)
+            warnings.warn('Cholesky factorization failed (iter %i).' % n_iter)
+            if handle_npd == 'lu':
+                d = torch.linalg.solve(hess,
+                                       grad.neg().unsqueeze(1)).squeeze(1)
+            elif handle_npd == 'grad':
+                d = grad.neg()
+            else:
+                raise RuntimeError('invalid handle_npd encountered.')
 
 
         # =====================================================

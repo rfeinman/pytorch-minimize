@@ -57,7 +57,7 @@ Pytorch-minimize uses autograd to compute derivatives behind the scenes, so all 
    
 2. __Newton Conjugate Gradient (CG).__ The Newton-Raphson method is a staple of unconstrained optimization. Although computing full Hessian matrices with PyTorch's reverse-mode automatic differentiation can be costly, computing Hessian-vector products is cheap, and it also saves a lot of memory. The Conjugate Gradient (CG) variant of Newton's method is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
 
-3. __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to LU factorization. This is not the safest resolution for ill-conditioned Hessians and it may be modified in the future.
+3. __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
 
 ## Examples
 
