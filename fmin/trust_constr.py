@@ -118,8 +118,10 @@ def fmin_trust_constr(
         constraints=constraints,
         options=dict(verbose=disp, maxiter=max_iter, **kwargs)
     )
-    # for key in ['fun', 'grad', 'jac', 'x']:
-    #     result[key] = torch.from_numpy(result[key])
+
+    # convert the important things to torch tensors
+    for key in ['fun', 'grad', 'x']:
+        result[key] = torch.from_numpy(result[key]).to(x0.dtype)
 
     return result
 
