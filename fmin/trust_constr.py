@@ -10,19 +10,19 @@ _constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp'}
 def _build_funcs(f, x0):
 
     def f_with_jac(x):
-        x = torch.from_numpy(x).view_as(x0).requires_grad_(True)
+        x = torch.from_numpy(x).to(x0.dtype).view_as(x0).requires_grad_(True)
         with torch.enable_grad():
             fval = f(x)
         grad, = torch.autograd.grad(fval, x)
         return fval.detach().numpy(), grad.numpy()
 
     def f_hess(x):
-        x = torch.from_numpy(x).view_as(x0).requires_grad_(True)
+        x = torch.from_numpy(x).to(x0.dtype).view_as(x0).requires_grad_(True)
         with torch.enable_grad():
             fval = f(x)
             grad, = torch.autograd.grad(fval, x, create_graph=True)
         def matvec(p):
-            p = torch.from_numpy(p).view_as(x0)
+            p = torch.from_numpy(p).to(x0.dtype).view_as(x0)
             hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
             return hvp.numpy()
         return LinearOperator((x.numel(), x.numel()), matvec=matvec)
@@ -42,11 +42,11 @@ def _build_constr(constr, x0):
     f_ = constr['fun']
 
     def f(x):
-        x = torch.from_numpy(x).view_as(x0)
+        x = torch.from_numpy(x).to(x0.dtype).view_as(x0)
         return f_(x).numpy()
 
     def f_jac(x):
-        x = torch.from_numpy(x).view_as(x0)
+        x = torch.from_numpy(x).to(x0.dtype).view_as(x0)
         if 'jac' in constr:
             grad = constr['jac'](x)
         else:
@@ -56,7 +56,7 @@ def _build_constr(constr, x0):
         return grad.numpy()
 
     def f_hess(x, v):
-        x = torch.from_numpy(x).view_as(x0)
+        x = torch.from_numpy(x).to(x0.dtype).view_as(x0)
         if 'hess' in constr:
             hess = constr['hess'](x)
             return v[0] * hess.numpy()
