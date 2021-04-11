@@ -101,7 +101,7 @@ def _build_bound(val, x0):
         return val.detach().cpu().numpy().flatten()
     elif isinstance(val, np.ndarray):
         assert val.size == x0.numel()
-        return val
+        return val.flatten()
     else:
         raise ValueError('Bound value has unrecognized format.')
 
