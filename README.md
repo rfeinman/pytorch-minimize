@@ -4,9 +4,11 @@ Pytorch-minimize represents a collection of utilities for minimizing scalar func
 It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html). 
 Unlike SciPy and MATLAB, jacobian and hessian functions need not be provided to pytorch-minimize solvers, and numerical approximations are never used.
 Both CPU and CUDA are supported.
-At the moment, only unconstrained minimization routines are implemented.
+At the moment, only unconstrained minimization routines are implemented.*
 
 Author: Reuben Feinman
+
+*UPDATE: A preliminary constrained optimizer has now been added to pytorch-minimize. See "Constrained Minimizers" below for more info.
 
 __At a glance:__
 
@@ -51,13 +53,19 @@ Furthermore, derivatives must still be constructed and provided as function hand
 Pytorch-minimize uses autograd to compute derivatives behind the scenes, so all you ever need to provide is your function.
 
 
-## Minimization Routines
+## Unconstrained Minimizers
 
 1. __BFGS/L-BFGS.__ BFGS is a cannonical quasi-Newton method for unconstrained optimization. I've implemented both the standard BFGS and the "limited memory" L-BFGS. For smaller scale problems where memory is not a concern, BFGS should be significantly faster than L-BFGS (especially on CUDA) since it avoids Python for loops and instead uses pure torch.
    
 2. __Newton Conjugate Gradient (CG).__ The Newton-Raphson method is a staple of unconstrained optimization. Although computing full Hessian matrices with PyTorch's reverse-mode automatic differentiation can be costly, computing Hessian-vector products is cheap, and it also saves a lot of memory. The Conjugate Gradient (CG) variant of Newton's method is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
 
 3. __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
+
+## Constrained Minimizers
+
+1. __Trust-Region Constrained Algorithm.__ Pytorch-minimize now includes a single constrained minimization routine based on SciPy's `trust-constr` method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed as well, it swiches to the trust-region interior point method. This minimizer is not supported by the `minimize` routine and instead must be imported directly as follows: `from fmin import fmin_trust_constr`.
+
+Note: the current trust-region constrained minimizer is not a custom implementation: rather, it is a wrapper for SciPy's `optimize.minimize` routine that uses autograd to build jacobian & hessian functions in an efficient and lightweight manner. Inputs and functions should use torch Tensors like other routines, however, data will be internally converted to numpy arrays. CUDA is supported but not recommended (data will be moved back-and-forth between GPU/CPU).
 
 ## Examples
 
@@ -66,3 +74,5 @@ The [Rosenbrock minimization tutorial](https://github.com/rfeinman/pytorch-minim
 In addition, the [SciPy benchmark](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/scipy_benchmark.py) provides a comparison of pytorch-minimize solvers to their analogous solvers from the `scipy.optimize` library. 
 For those transitioning from scipy, this script will help get a feel for the design of the current library. 
 Unlike scipy, jacobian and hessian functions need not be provided to pytorch-minimize solvers, and numerical approximations are never used.
+
+For constrained optimization, the [adversarial examples tutorial](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/constrained_optimization_adversarial_examples.ipynb) demonstrates how to use the trust-region constrained routine to generate an optimal adversarial perturbation given a constraint on the perturbation norm.
