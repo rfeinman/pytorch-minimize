@@ -9,22 +9,25 @@ _constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp'}
 
 def _build_funcs(f, x0):
 
+    def to_tensor(x):
+        return torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0)
+
     def f_with_jac(x):
-        x = torch.from_numpy(x).to(x0.dtype).view_as(x0).requires_grad_(True)
+        x = to_tensor(x).requires_grad_(True)
         with torch.enable_grad():
             fval = f(x)
         grad, = torch.autograd.grad(fval, x)
-        return fval.detach().numpy(), grad.numpy()
+        return fval.detach().cpu().numpy(), grad.cpu().numpy()
 
     def f_hess(x):
-        x = torch.from_numpy(x).to(x0.dtype).view_as(x0).requires_grad_(True)
+        x = to_tensor(x).requires_grad_(True)
         with torch.enable_grad():
             fval = f(x)
             grad, = torch.autograd.grad(fval, x, create_graph=True)
         def matvec(p):
-            p = torch.from_numpy(p).to(x0.dtype).view_as(x0)
+            p = to_tensor(p)
             hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
-            return hvp.numpy()
+            return hvp.cpu().numpy()
         return LinearOperator((x.numel(), x.numel()), matvec=matvec)
 
     return f_with_jac, f_hess
@@ -41,30 +44,33 @@ def _build_constr(constr, x0):
         constr['ub'] = np.inf
     f_ = constr['fun']
 
+    def to_tensor(x):
+        return torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0)
+
     def f(x):
-        x = torch.from_numpy(x).to(x0.dtype).view_as(x0)
-        return f_(x).numpy()
+        x = to_tensor(x)
+        return f_(x).cpu().numpy()
 
     def f_jac(x):
-        x = torch.from_numpy(x).to(x0.dtype).view_as(x0)
+        x = to_tensor(x)
         if 'jac' in constr:
             grad = constr['jac'](x)
         else:
             x.requires_grad_(True)
             with torch.enable_grad():
                 grad, = torch.autograd.grad(f_(x), x)
-        return grad.numpy()
+        return grad.cpu().numpy()
 
     def f_hess(x, v):
-        x = torch.from_numpy(x).to(x0.dtype).view_as(x0)
+        x = to_tensor(x)
         if 'hess' in constr:
             hess = constr['hess'](x)
-            return v[0] * hess.numpy()
+            return v[0] * hess.cpu().numpy()
         elif 'hessp' in constr:
             def matvec(p):
-                p = torch.from_numpy(p).view_as(x0)
+                p = to_tensor(p)
                 hvp = constr['hessp'](x, p)
-                return v[0] * hvp.numpy()
+                return v[0] * hvp.cpu().numpy()
             return LinearOperator((x.numel(), x.numel()), matvec=matvec)
         else:
             x.requires_grad_(True)
@@ -74,9 +80,9 @@ def _build_constr(constr, x0):
                 else:
                     grad, = torch.autograd.grad(f_(x), x, create_graph=True)
             def matvec(p):
-                p = torch.from_numpy(p).view_as(x0)
+                p = to_tensor(p)
                 hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
-                return v[0] * hvp.numpy()
+                return v[0] * hvp.cpu().numpy()
             return LinearOperator((x.numel(), x.numel()), matvec=matvec)
 
     return NonlinearConstraint(
@@ -96,9 +102,8 @@ def fmin_trust_constr(
         max_iter = 1000
     x0 = x0.detach()
     if x0.is_cuda:
-        warnings.warn('GPU is not currently supported for trust-constr. '
-                      'Data will be moved to CPU.')
-        x0 = x0.cpu()
+        warnings.warn('GPU is not recommended for trust-constr. '
+                      'Data will be moved back-and-forth from CPU.')
 
     if callback is not None:
         callback_ = callback
@@ -111,7 +116,7 @@ def fmin_trust_constr(
     else:
         constraints = []
 
-    x0_np = x0.numpy().flatten().copy()
+    x0_np = x0.cpu().numpy().flatten().copy()
     result = minimize(
         f_with_jac, x0_np, method='trust-constr', jac=True,
         hess=f_hess, callback=callback, tol=tol,
@@ -121,7 +126,7 @@ def fmin_trust_constr(
 
     # convert the important things to torch tensors
     for key in ['fun', 'grad', 'x']:
-        result[key] = torch.from_numpy(result[key]).to(x0.dtype)
+        result[key] = torch.tensor(result[key], dtype=x0.dtype, device=x0.device)
 
     return result
 
