@@ -35,19 +35,17 @@ def backtracking(fun, x, t, d, f, g, mu=0.1, decay=0.98, max_ls=500, tmin=1e-5):
     """
     x_new = x
     f_new = f
-    success = True
+    success = False
     for i in range(max_ls):
         f_new, x_new = fun(x, t, d)
-        # generalized variant of the armijo condition
         if f_new <= f + mu * g.mul(x_new-x).sum():
+            success = True
             break
         if t <= tmin:
             warnings.warn('step size has reached the minimum threshold.')
-            success = False
             break
         t = t.mul(decay)
     else:
         warnings.warn('backtracking did not converge.')
-        success = False
 
     return x_new, f_new, t, success
