@@ -8,7 +8,7 @@ from scipy.sparse.linalg import LinearOperator
 _constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp'}
 
 
-def _build_funcs(f, x0):
+def _build_obj(f, x0):
     numel = x0.numel()
 
     def to_tensor(x):
@@ -136,7 +136,7 @@ def fmin_trust_constr(
         bounds = Bounds(lb, ub)
 
     # build objective function (and hessian)
-    f_with_jac, f_hess = _build_funcs(f, x0)
+    f_with_jac, f_hess = _build_obj(f, x0)
 
     # build constraints
     if constr is not None:
