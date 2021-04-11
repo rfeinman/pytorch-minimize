@@ -9,6 +9,7 @@ _constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp'}
 
 
 def _build_funcs(f, x0):
+    numel = x0.numel()
 
     def to_tensor(x):
         return torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0)
@@ -29,7 +30,7 @@ def _build_funcs(f, x0):
             p = to_tensor(p)
             hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
             return hvp.view(-1).cpu().numpy()
-        return LinearOperator((x.numel(), x.numel()), matvec=matvec)
+        return LinearOperator((numel, numel), matvec=matvec)
 
     return f_with_jac, f_hess
 
@@ -85,7 +86,7 @@ def _build_constr(constr, x0):
                 p = to_tensor(p)
                 hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
                 return v[0] * hvp.view(-1).cpu().numpy()
-            return LinearOperator((x.numel(), x.numel()), matvec=matvec)
+            return LinearOperator((numel, numel), matvec=matvec)
 
     return NonlinearConstraint(
         fun=f, lb=constr['lb'], ub=constr['ub'],
