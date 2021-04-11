@@ -1,4 +1,5 @@
 import warnings
+import numbers
 import torch
 import numpy as np
 from scipy.optimize import minimize, Bounds, NonlinearConstraint
@@ -90,9 +91,22 @@ def _build_constr(constr, x0):
         jac=f_jac, hess=f_hess)
 
 
+def _build_bound(val, x0):
+    if isinstance(val, numbers.Number):
+        return np.full(x0.numel(), val)
+    elif isinstance(val, torch.Tensor):
+        assert val.numel() == x0.numel()
+        return val.detach().cpu().numpy().flatten()
+    elif isinstance(val, np.ndarray):
+        assert val.size == x0.numel()
+        return val
+    else:
+        raise ValueError('Bound value has unrecognized format.')
+
+
 @torch.no_grad()
 def fmin_trust_constr(
-        f, x0, constr=None, max_iter=None, tol=None, callback=None,
+        f, x0, constr=None, bounds=None, max_iter=None, tol=None, callback=None,
         disp=0, **kwargs):
     """
     A constrained minimizer for pytorch functions based on scipy's
@@ -105,21 +119,35 @@ def fmin_trust_constr(
         warnings.warn('GPU is not recommended for trust-constr. '
                       'Data will be moved back-and-forth from CPU.')
 
+    # handle callbacks
     if callback is not None:
         callback_ = callback
-        callback = lambda x: callback_(torch.from_numpy(x).view_as(x0))
+        callback = lambda x: callback_(
+            torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0))
 
-    f_with_jac, f_hess  = _build_funcs(f, x0)
+    # handle bounds
+    if bounds is not None:
+        assert isinstance(bounds, (tuple, list))
+        assert len(bounds) == 2
+        lb = _build_bound(bounds[0], x0)
+        ub = _build_bound(bounds[1], x0)
+        bounds = Bounds(lb, ub)
 
+    # build objective function (and hessian)
+    f_with_jac, f_hess = _build_funcs(f, x0)
+
+    # build constraints
     if constr is not None:
         constraints = [_build_constr(constr, x0)]
     else:
         constraints = []
 
+    # optimize
     x0_np = x0.cpu().numpy().flatten().copy()
     result = minimize(
         f_with_jac, x0_np, method='trust-constr', jac=True,
         hess=f_hess, callback=callback, tol=tol,
+        bounds=bounds,
         constraints=constraints,
         options=dict(verbose=disp, maxiter=max_iter, **kwargs)
     )
