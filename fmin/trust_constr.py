@@ -18,7 +18,7 @@ def _build_funcs(f, x0):
         with torch.enable_grad():
             fval = f(x)
         grad, = torch.autograd.grad(fval, x)
-        return fval.detach().cpu().numpy(), grad.cpu().numpy()
+        return fval.detach().cpu().numpy(), grad.view(-1).cpu().numpy()
 
     def f_hess(x):
         x = to_tensor(x).requires_grad_(True)
@@ -28,7 +28,7 @@ def _build_funcs(f, x0):
         def matvec(p):
             p = to_tensor(p)
             hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
-            return hvp.cpu().numpy()
+            return hvp.view(-1).cpu().numpy()
         return LinearOperator((x.numel(), x.numel()), matvec=matvec)
 
     return f_with_jac, f_hess
@@ -44,6 +44,7 @@ def _build_constr(constr, x0):
     if 'ub' not in constr:
         constr['ub'] = np.inf
     f_ = constr['fun']
+    numel = x0.numel()
 
     def to_tensor(x):
         return torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0)
@@ -60,19 +61,19 @@ def _build_constr(constr, x0):
             x.requires_grad_(True)
             with torch.enable_grad():
                 grad, = torch.autograd.grad(f_(x), x)
-        return grad.cpu().numpy()
+        return grad.view(-1).cpu().numpy()
 
     def f_hess(x, v):
         x = to_tensor(x)
         if 'hess' in constr:
             hess = constr['hess'](x)
-            return v[0] * hess.cpu().numpy()
+            return v[0] * hess.view(numel, numel).cpu().numpy()
         elif 'hessp' in constr:
             def matvec(p):
                 p = to_tensor(p)
                 hvp = constr['hessp'](x, p)
-                return v[0] * hvp.cpu().numpy()
-            return LinearOperator((x.numel(), x.numel()), matvec=matvec)
+                return v[0] * hvp.view(-1).cpu().numpy()
+            return LinearOperator((numel, numel), matvec=matvec)
         else:
             x.requires_grad_(True)
             with torch.enable_grad():
@@ -83,7 +84,7 @@ def _build_constr(constr, x0):
             def matvec(p):
                 p = to_tensor(p)
                 hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
-                return v[0] * hvp.cpu().numpy()
+                return v[0] * hvp.view(-1).cpu().numpy()
             return LinearOperator((x.numel(), x.numel()), matvec=matvec)
 
     return NonlinearConstraint(
@@ -155,6 +156,7 @@ def fmin_trust_constr(
     # convert the important things to torch tensors
     for key in ['fun', 'grad', 'x']:
         result[key] = torch.tensor(result[key], dtype=x0.dtype, device=x0.device)
+    result['x'] = result['x'].view_as(x0)
 
     return result
 
