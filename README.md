@@ -2,13 +2,14 @@
 
 Pytorch-minimize represents a collection of utilities for minimizing scalar functions of one or more variables in PyTorch. 
 It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html). 
-Unlike SciPy and MATLAB, jacobian and hessian functions need not be provided to pytorch-minimize solvers, and numerical approximations are never used.
+Unlike SciPy and MATLAB, which use numerical approximations to function derivatives, pytorch-minimize uses _real_ first- and second-order derivatives at all times, computed seamlessly behind the scenes with autograd.
 Both CPU and CUDA are supported.
 At the moment, only unconstrained minimization routines are implemented.*
 
 Author: Reuben Feinman
 
-*UPDATE: A preliminary constrained optimizer has now been added to pytorch-minimize. See "Constrained Minimizers" below for more info.
+*UPDATE: A preliminary constrained optimizer has now been added to pytorch-minimize. 
+See "Constrained Minimizers" for more info.
 
 __At a glance:__
 
@@ -63,9 +64,9 @@ Pytorch-minimize uses autograd to compute derivatives behind the scenes, so all 
 
 ## Constrained Minimizers
 
-1. __Trust-Region Constrained Algorithm.__ Pytorch-minimize now includes a single constrained minimization routine based on SciPy's `trust-constr` method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed as well, it swiches to the trust-region interior point method. This minimizer is not supported by the `minimize` routine and instead must be imported directly as follows: `from fmin import fmin_trust_constr`.
+1. __Trust-Region Constrained Algorithm.__ Pytorch-minimize includes a single constrained minimization routine based on SciPy's `trust-constr` method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed, the trust-region interior point method is used. This minimizer is not currently accessible through the `minimize` routine and instead must be imported directly as `from fmin import fmin_trust_constr`.
 
-Note: the current trust-region constrained minimizer is not a custom implementation: rather, it is a wrapper for SciPy's `optimize.minimize` routine that uses autograd to build jacobian & hessian functions in an efficient and lightweight manner. Inputs and functions should use torch Tensors like other routines, however, data will be internally converted to numpy arrays. CUDA is supported but not recommended (data will be moved back-and-forth between GPU/CPU).
+NOTE: The current trust-region constrained minimizer is not a custom implementation, but rather a wrapper for SciPy's `optimize.minimize` routine (all rights reserved). It uses autograd behind the scenes to build jacobian & hessian callables before invoking scipy. Inputs and objectivs should use torch tensors like other pytorch-minimize routines. CUDA is supported but not recommended; data will be moved back-and-forth between GPU/CPU.
 
 ## Examples
 
