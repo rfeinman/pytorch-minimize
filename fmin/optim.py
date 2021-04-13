@@ -1,7 +1,47 @@
+import numbers
+import numpy as np
 import torch
 from functools import reduce
 from torch.optim import Optimizer
 from scipy import optimize
+
+
+def _build_bounds(bounds, params, numel_total):
+    if len(bounds) != len(params):
+        raise ValueError('bounds must be an iterable with same length as params')
+
+    lb = np.full(numel_total, -np.inf)
+    ub = np.full(numel_total, np.inf)
+    keep_feasible = np.zeros(numel_total, dtype=np.bool)
+
+    def process_bound(x, numel):
+        if isinstance(x, torch.Tensor):
+            assert x.numel() == numel
+            return x.view(-1).detach().cpu().numpy()
+        elif isinstance(x, np.ndarray):
+            assert x.size == numel
+            return x.flatten()
+        elif isinstance(x, (bool, numbers.Number)):
+            return x
+        else:
+            raise ValueError('invalid bound value.')
+
+    offset = 0
+    for bound, p in zip(bounds, params):
+        numel = p.numel()
+        if bound is None:
+            offset += numel
+            continue
+        if not isinstance(bound, (list, tuple)) and len(bound) in [2,3]:
+            raise ValueError('elements of "bounds" must each be a '
+                             'list/tuple of length 2 or 3')
+        lb[offset:offset + numel] = process_bound(bound[0], numel)
+        ub[offset:offset + numel] = process_bound(bound[1], numel)
+        if len(bound) == 3:
+            keep_feasible[offset:offset + numel] = process_bound(bound[2], numel)
+        offset += numel
+
+    return optimize.Bounds(lb, ub, keep_feasible)
 
 
 class Minimize(Optimizer):
@@ -43,18 +83,26 @@ class Minimize(Optimizer):
         if len(self.param_groups) != 1:
             raise ValueError("Minimize doesn't support per-parameter options "
                              "(parameter groups)")
-        if bounds != None:
-            raise NotImplementedError("Minimize doesn't yet support bounds")
         if constraints != ():
             raise NotImplementedError("Minimize doesn't yet support constraints")
 
         self._params = self.param_groups[0]['params']
+        self._param_bounds = self.param_groups[0]['bounds']
         self._numel_cache = None
+        self._bounds_cache = None
 
     def _numel(self):
         if self._numel_cache is None:
             self._numel_cache = reduce(lambda total, p: total + p.numel(), self._params, 0)
         return self._numel_cache
+
+    def _bounds(self):
+        if self._param_bounds is None:
+            return None
+        if self._bounds_cache is None:
+            self._bounds_cache = _build_bounds(self._param_bounds, self._params,
+                                               self._numel())
+        return self._bounds_cache
 
     def _gather_flat_param(self):
         views = []
@@ -105,7 +153,7 @@ class Minimize(Optimizer):
         # optimizer settings
         group = self.param_groups[0]
         method = group['method']
-        bounds = group['bounds']
+        bounds = self._bounds()
         constraints = group['constraints']
         tol = group['tol']
         options = group['options']
