@@ -35,8 +35,12 @@ def _build_bounds(bounds, params, numel_total):
         if not isinstance(bound, (list, tuple)) and len(bound) in [2,3]:
             raise ValueError('elements of "bounds" must each be a '
                              'list/tuple of length 2 or 3')
-        lb[offset:offset + numel] = process_bound(bound[0], numel)
-        ub[offset:offset + numel] = process_bound(bound[1], numel)
+        if bound[0] is None and bound[1] is None:
+            raise ValueError('either lower or upper bound must be defined.')
+        if bound[0] is not None:
+            lb[offset:offset + numel] = process_bound(bound[0], numel)
+        if bound[1] is not None:
+            ub[offset:offset + numel] = process_bound(bound[1], numel)
         if len(bound) == 3:
             keep_feasible[offset:offset + numel] = process_bound(bound[2], numel)
         offset += numel
