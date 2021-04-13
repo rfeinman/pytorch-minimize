@@ -6,6 +6,7 @@ from scipy.optimize import minimize, Bounds, NonlinearConstraint
 from scipy.sparse.linalg import LinearOperator
 
 _constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp', 'keep_feasible'}
+_bounds_keys = {'lb', 'ub', 'keep_feasible'}
 
 
 def _build_obj(f, x0):
@@ -94,7 +95,7 @@ def _build_constr(constr, x0):
         keep_feasible=constr.get('keep_feasible', False))
 
 
-def _build_bound(val, x0):
+def _check_bound(val, x0):
     if isinstance(val, numbers.Number):
         return np.full(x0.numel(), val)
     elif isinstance(val, torch.Tensor):
@@ -105,6 +106,17 @@ def _build_bound(val, x0):
         return val.flatten()
     else:
         raise ValueError('Bound value has unrecognized format.')
+
+
+def _build_bounds(bounds, x0):
+    assert isinstance(bounds, dict)
+    assert set(bounds.keys()).issubset(_bounds_keys)
+    assert 'lb' in bounds or 'ub' in bounds
+    lb = _check_bound(bounds.get('lb', -np.inf), x0)
+    ub = _check_bound(bounds.get('ub', np.inf), x0)
+    keep_feasible = bounds.get('keep_feasible', False)
+
+    return Bounds(lb, ub, keep_feasible)
 
 
 @torch.no_grad()
@@ -130,11 +142,7 @@ def fmin_trust_constr(
 
     # handle bounds
     if bounds is not None:
-        assert isinstance(bounds, (tuple, list))
-        assert len(bounds) == 2
-        lb = _build_bound(bounds[0], x0)
-        ub = _build_bound(bounds[1], x0)
-        bounds = Bounds(lb, ub)
+        bounds = _build_bounds(bounds, x0)
 
     # build objective function (and hessian)
     f_with_jac, f_hess = _build_obj(f, x0)
