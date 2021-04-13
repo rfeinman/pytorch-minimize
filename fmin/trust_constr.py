@@ -5,7 +5,7 @@ import numpy as np
 from scipy.optimize import minimize, Bounds, NonlinearConstraint
 from scipy.sparse.linalg import LinearOperator
 
-_constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp'}
+_constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp', 'keep_feasible'}
 
 
 def _build_obj(f, x0):
@@ -90,7 +90,8 @@ def _build_constr(constr, x0):
 
     return NonlinearConstraint(
         fun=f, lb=constr['lb'], ub=constr['ub'],
-        jac=f_jac, hess=f_hess)
+        jac=f_jac, hess=f_hess,
+        keep_feasible=constr.get('keep_feasible', False))
 
 
 def _build_bound(val, x0):
