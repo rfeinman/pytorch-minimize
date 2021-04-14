@@ -337,6 +337,7 @@ def fmin_newton_exact(
     if return_all:
         allvecs = [x]
     nfev = 1  # number of function evals
+    nfail = 0
     n_iter = 0
 
 
@@ -346,7 +347,7 @@ def fmin_newton_exact(
             print("         Current function value: %f" % fval)
             print("         Iterations: %d" % n_iter)
             print("         Function evaluations: %d" % nfev)
-        result = OptimizeResult(fun=fval, jac=grad, nfev=nfev,
+        result = OptimizeResult(fun=fval, jac=grad, nfev=nfev, nfail=nfail,
                                 status=warnflag, success=(warnflag==0),
                                 message=msg, x=x.view_as(x0), nit=n_iter)
         if return_all:
@@ -368,7 +369,7 @@ def fmin_newton_exact(
             d = torch.cholesky_solve(grad.neg().unsqueeze(1),
                                      torch.linalg.cholesky(hess)).squeeze(1)
         except:
-            warnings.warn('Cholesky factorization failed (iter %i).' % n_iter)
+            nfail += 1
             if handle_npd == 'lu':
                 d = torch.linalg.solve(hess,
                                        grad.neg().unsqueeze(1)).squeeze(1)
