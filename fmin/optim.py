@@ -4,6 +4,10 @@ import torch
 from functools import reduce
 from torch.optim import Optimizer
 from scipy import optimize
+from torch._vmap_internals import _vmap
+from torch.autograd.functional import (_construct_standard_basis_for,
+                                       _grad_postprocess, _tuple_postprocess,
+                                       _as_tuple)
 
 
 def _build_bounds(bounds, params, numel_total):
@@ -48,6 +52,44 @@ def _build_bounds(bounds, params, numel_total):
     return optimize.Bounds(lb, ub, keep_feasible)
 
 
+def _jacobian(inputs, outputs):
+    """A modified variant of torch.autograd.functional.jacobian for
+    pre-computed outputs
+
+    This is only used for nonlinear parameter constraints (if provided)
+    """
+    is_inputs_tuple, inputs = _as_tuple(inputs, "inputs", "jacobian")
+    is_outputs_tuple, outputs = _as_tuple(outputs, "outputs", "jacobian")
+
+    output_numels = tuple(output.numel() for output in outputs)
+    grad_outputs = _construct_standard_basis_for(outputs, output_numels)
+    with torch.enable_grad():
+        flat_outputs = tuple(output.reshape(-1) for output in outputs)
+
+    def vjp(grad_output):
+        vj = list(torch.autograd.grad(flat_outputs, inputs, grad_output, allow_unused=True))
+        for el_idx, vj_el in enumerate(vj):
+            if vj_el is not None:
+                continue
+            vj[el_idx] = torch.zeros_like(inputs[el_idx])
+        return tuple(vj)
+
+    jacobians_of_flat_output = _vmap(vjp)(grad_outputs)
+
+    jacobian_input_output = []
+    for jac, input_i in zip(jacobians_of_flat_output, inputs):
+        jacobian_input_i_output = []
+        for jac, output_j in zip(jac.split(output_numels, dim=0), outputs):
+            jacobian_input_i_output_j = jac.view(output_j.shape + input_i.shape)
+            jacobian_input_i_output.append(jacobian_input_i_output_j)
+        jacobian_input_output.append(jacobian_input_i_output)
+
+    jacobian_output_input = tuple(zip(*jacobian_input_output))
+
+    jacobian_output_input = _grad_postprocess(jacobian_output_input, create_graph=False)
+    return _tuple_postprocess(jacobian_output_input, (is_outputs_tuple, is_inputs_tuple))
+
+
 class Minimize(Optimizer):
     """A general-purpose optimizer that wraps SciPy's `optimize.minimize`.
 
@@ -71,7 +113,7 @@ class Minimize(Optimizer):
                  params,
                  method='bfgs',
                  bounds=None,
-                 constraints=(),
+                 constraints=(),  # experimental feature! use with caution
                  tol=None,
                  options=None):
         assert isinstance(method, str)
@@ -87,8 +129,9 @@ class Minimize(Optimizer):
         if len(self.param_groups) != 1:
             raise ValueError("Minimize doesn't support per-parameter options "
                              "(parameter groups)")
-        if constraints != ():
-            raise NotImplementedError("Minimize doesn't yet support constraints")
+        if constraints != () and method != 'trust-constr':
+            raise NotImplementedError("Constraints only currently supported for "
+                                      "method='trust-constr'.")
 
         self._params = self.param_groups[0]['params']
         self._param_bounds = self.param_groups[0]['bounds']
@@ -139,6 +182,41 @@ class Minimize(Optimizer):
             offset += numel
         assert offset == self._numel()
 
+    def _build_constraints(self, constraints):
+        assert isinstance(constraints, dict)
+        assert 'fun' in constraints
+        assert 'lb' in constraints or 'ub' in constraints
+
+        to_tensor = lambda x: self._params[0].new_tensor(x)
+        to_array = lambda x: x.cpu().numpy()
+        fun_ = constraints['fun']
+        lb = constraints.get('lb', -np.inf)
+        ub = constraints.get('ub', np.inf)
+        strict = constraints.get('keep_feasible', False)
+        lb = to_array(lb) if torch.is_tensor(lb) else lb
+        ub = to_array(ub) if torch.is_tensor(ub) else ub
+        strict = to_array(strict) if torch.is_tensor(strict) else strict
+
+        def fun(x):
+            self._set_flat_param(to_tensor(x))
+            return to_array(fun_())
+
+        def jac(x):
+            self._set_flat_param(to_tensor(x))
+            with torch.enable_grad():
+                output = fun_()
+
+            # this is now a tuple of tensors, one per parameter, each with
+            # shape (num_outputs, *param_shape).
+            J_seq = _jacobian(inputs=tuple(self._params), outputs=output)
+
+            # flatten and stack the tensors along dim 1 to get our full matrix
+            J = torch.cat([elt.view(output.numel(), -1) for elt in J_seq], 1)
+
+            return to_array(J)
+
+        return optimize.NonlinearConstraint(fun, lb, ub, jac=jac, keep_feasible=strict)
+
     @torch.no_grad()
     def step(self, closure):
         """Performs a single optimization step.
@@ -161,6 +239,10 @@ class Minimize(Optimizer):
         constraints = group['constraints']
         tol = group['tol']
         options = group['options']
+
+        # build constraints (if provided)
+        if constraints != ():
+            constraints = self._build_constraints(constraints)
 
         # build objective
         def fun(x):
