@@ -82,6 +82,8 @@ class BFGS(HessianUpdateStrategy):
     def _update(self, s, y, rho_inv):
         rho = rho_inv.reciprocal()
         if self.inverse:
+            if self.n_updates == 0:
+                self.H.mul_(rho_inv / y.dot(y))
             torch.addr(
                 torch.chain_matmul(
                     torch.addr(self.I, s, y, alpha=-rho),
@@ -91,6 +93,8 @@ class BFGS(HessianUpdateStrategy):
                 s, s, alpha=rho, out=self.H
             )
         else:
+            if self.n_updates == 0:
+                self.B.mul_(rho * y.dot(y))
             Bs = torch.mv(self.B, s)
             torch.addr(
                 torch.addr(self.B, y, y, alpha=rho),
