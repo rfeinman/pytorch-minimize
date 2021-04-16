@@ -2,6 +2,11 @@ import torch
 import torch.autograd as autograd
 
 
+def jacobian_dense(fun, x, vectorize=True):
+    x = x.detach().requires_grad_(True)
+    return autograd.functional.jacobian(fun, x, vectorize=vectorize)
+
+
 def jacobian_linop(fun, x):
     x = x.detach().requires_grad_(True)
     f = fun(x)
