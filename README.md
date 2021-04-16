@@ -39,9 +39,9 @@ Although PyTorch offers many routines for stochastic optimization, utilities for
 
 MATLAB and SciPy are industry standards for deterministic optimization. 
 These libraries have a comprehensive set of routines; however, automatic differentiation is not supported.* 
-Therefore, the user must specify 1st- and 2nd-order gradients explicitly (if they are known) or use finite-difference approximations.
+Therefore, the user must provide explicit 1st- and 2nd-order gradients (if they are known) or use finite-difference approximations.
 
-The motivation for this library is to offer a set of tools for deterministic optimization with analytical gradients via PyTorch's autograd.
+The motivation for pytorch-minimize is to offer a set of tools for deterministic optimization with automatic gradients and GPU acceleration.
 
 __
 
