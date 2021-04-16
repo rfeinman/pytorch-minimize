@@ -2,7 +2,7 @@
 
 Pytorch-minimize represents a collection of utilities for minimizing multivariate functions in PyTorch. 
 It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html). 
-Unlike SciPy and MATLAB, which use numerical approximations to function derivatives, pytorch-minimize uses _real_ first- and second-order derivatives at all times, computed seamlessly behind the scenes with autograd.
+Unlike SciPy and MATLAB, which use numerical approximations of function derivatives, pytorch-minimize uses _real_ first- and second-order derivatives, computed seamlessly behind the scenes with autograd.
 Both CPU and CUDA are supported.
 
 __Author__: Reuben Feinman
