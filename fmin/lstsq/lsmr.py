@@ -1,33 +1,30 @@
 """
+Code modified from scipy.sparse.linalg.lsmr
+
 Copyright (C) 2010 David Fong and Michael Saunders
-LSMR uses an iterative method.
-07 Jun 2010: Documentation updated
-03 Jun 2010: First release version in Python
-David Chin-lung Fong            clfong@stanford.edu
-Institute for Computational and Mathematical Engineering
-Stanford University
-Michael Saunders                saunders@stanford.edu
-Systems Optimization Laboratory
-Dept of MS&E, Stanford University.
 """
-
-__all__ = ['lsmr']
-
-import numbers
 import torch
-import math
-from scipy.sparse.linalg.isolve.lsqr import _sym_ortho
 
 from .linear_operator import TorchLinearOperator
 
 
-def sqrt(x):
-    if torch.is_tensor(x):
-        return x.sqrt()
-    elif isinstance(x, numbers.Number):
-        return math.sqrt(x)
+def _sym_ortho(a, b):
+    """Stable implementation of Givens rotation."""
+    if b == 0:
+        return torch.sign(a), 0, torch.abs(a)
+    elif a == 0:
+        return 0, torch.sign(b), torch.abs(b)
+    elif torch.abs(b) > torch.abs(a):
+        tau = a / b
+        s = torch.sign(b) / torch.sqrt(1 + tau * tau)
+        c = s * tau
+        r = b / s
     else:
-        raise ValueError
+        tau = b / a
+        c = torch.sign(a) / torch.sqrt(1 + tau * tau)
+        s = c * tau
+        r = a / c
+    return c, s, r
 
 
 def aslinearoperator(A):
@@ -35,9 +32,7 @@ def aslinearoperator(A):
         return A
     elif isinstance(A, torch.Tensor):
         assert A.dim() == 2
-        return TorchLinearOperator(A.shape,
-                                   matvec=A.mv, rmatvec=A.T.mv,
-                                   device=A.device, dtype=A.dtype)
+        return TorchLinearOperator(A.shape, matvec=A.mv, rmatvec=A.T.mv)
     else:
         raise ValueError('Input must be either a Tensor or TorchLinearOperator')
 
@@ -186,7 +181,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         alpha = v.norm()
     else:
         v = b.new_zeros(n)
-        alpha = 0
+        alpha = b.new_tensor(0)
 
     if alpha > 0:
         v = (1 / alpha) * v
@@ -196,10 +191,10 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     itn = 0
     zetabar = alpha * beta
     alphabar = alpha
-    rho = 1
-    rhobar = 1
-    cbar = 1
-    sbar = 0
+    rho = b.new_tensor(1)
+    rhobar = b.new_tensor(1)
+    cbar = b.new_tensor(1)
+    sbar = b.new_tensor(0)
 
     h = v.clone()
     hbar = b.new_zeros(n)
@@ -207,21 +202,21 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     # Initialize variables for estimation of ||r||.
 
     betadd = beta
-    betad = 0
-    rhodold = 1
-    tautildeold = 0
-    thetatilde = 0
-    zeta = 0
-    d = 0
+    betad = b.new_tensor(0)
+    rhodold = b.new_tensor(1)
+    tautildeold = b.new_tensor(0)
+    thetatilde = b.new_tensor(0)
+    zeta = b.new_tensor(0)
+    d = b.new_tensor(0)
 
     # Initialize variables for estimation of ||A|| and cond(A)
 
     normA2 = alpha * alpha
-    maxrbar = 0
-    minrbar = 1e+100
-    normA = sqrt(normA2)
-    condA = 1
-    normx = 0
+    maxrbar = b.new_tensor(0)
+    minrbar = b.new_tensor(0.99 * torch.finfo(b.dtype).max)
+    normA = torch.sqrt(normA2)
+    condA = b.new_tensor(1)
+    normx = b.new_tensor(0)
 
     # Items for use in stopping rules, normb set earlier
     istop = 0
@@ -325,23 +320,23 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         tautildeold = (zetaold - thetatildeold * tautildeold) / rhotildeold
         taud = (zeta - thetatilde * tautildeold) / rhodold
         d = d + betacheck * betacheck
-        normr = sqrt(d + (betad - taud)**2 + betadd * betadd)
+        normr = torch.sqrt(d + (betad - taud)**2 + betadd * betadd)
 
         # Estimate ||A||.
         normA2 = normA2 + beta * beta
-        normA = sqrt(normA2)
+        normA = torch.sqrt(normA2)
         normA2 = normA2 + alpha * alpha
 
         # Estimate cond(A).
-        maxrbar = max(maxrbar, rhobarold)
+        maxrbar = torch.max(maxrbar, rhobarold)
         if itn > 1:
-            minrbar = min(minrbar, rhobarold)
-        condA = max(maxrbar, rhotemp) / min(minrbar, rhotemp)
+            minrbar = torch.min(minrbar, rhobarold)
+        condA = torch.max(maxrbar, rhotemp) / torch.min(minrbar, rhotemp)
 
         # Test for convergence.
 
         # Compute norms for convergence testing.
-        normar = abs(zetabar)
+        normar = torch.abs(zetabar)
         normx = x.norm()
 
         # Now use these norms to estimate certain other quantities,
