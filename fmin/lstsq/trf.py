@@ -45,7 +45,7 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8, max_nfev=No
     g = J.rmv(f)
 
     scale, scale_inv = x_scale, 1 / x_scale
-    Delta = (x0 * scale_inv).norm()  # TODO: why does algorithm fail if we don't call .item()?
+    Delta = (x0 * scale_inv).norm()
     if Delta == 0:
         Delta = 1.0
 
