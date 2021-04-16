@@ -1,37 +1,36 @@
 import torch
-from scipy.sparse.linalg import LinearOperator
+import torch.autograd as autograd
 
 
-def _is_cuda(device):
-    if device is None:
-        return False
-    if isinstance(device, str):
-        return 'cuda' in device
-    if isinstance(device, torch.device):
-        return 'cuda' in device.type
-    raise RuntimeError('invalid device encountered.')
+def jacobian_linop(fun, x):
+    x = x.detach().requires_grad_(True)
+    f = fun(x)
 
+    # vector-jacobian product
+    def vjp(v):
+        v = v.view_as(f)
+        vjp, = autograd.grad(f, x, v, retain_graph=True)
+        return vjp.view(-1)
 
-def wrap_numpy(fun, device, dtype):
-    def new_fun(inp):
-        if _is_cuda(device):
-            inp = torch.tensor(inp, device=device, dtype=dtype)
-        else:
-            # potentially avoid data copy
-            inp = torch.from_numpy(inp).to(dtype)
-        out = fun(inp)
-        return out.data.cpu().numpy()
-    return new_fun
+    # jacobian-vector product
+    gf = torch.zeros_like(f, requires_grad=True)
+    gx, = autograd.grad(f, x, gf, create_graph=True)
+    def jvp(v):
+        v = v.view_as(x)
+        jvp, = autograd.grad(gx, gf, v, retain_graph=True)
+        return jvp.view(-1)
+
+    jac = TorchLinearOperator((f.numel(), x.numel()), matvec=jvp, rmatvec=vjp)
+
+    return jac
 
 
 class TorchLinearOperator(object):
     """Linear operator defined in terms of user-specified operations."""
-    def __init__(self, shape, matvec, rmatvec=None, device=None, dtype=None):
+    def __init__(self, shape, matvec, rmatvec=None):
         self.shape = shape
         self._matvec = matvec
         self._rmatvec = rmatvec
-        self.device = device
-        self.dtype = dtype
 
     def matvec(self, x):
         return self._matvec(x)
@@ -47,11 +46,3 @@ class TorchLinearOperator(object):
     mv = matvec
     rmv = rmatvec
     matmul = matmat
-
-    def scipy(self):
-        matvec = wrap_numpy(self._matvec, self.device, self.dtype)
-        if self._rmatvec is not None:
-            rmatvec = wrap_numpy(self._rmatvec, self.device, self.dtype)
-        else:
-            rmatvec = None
-        return LinearOperator(self.shape, matvec=matvec, rmatvec=rmatvec)

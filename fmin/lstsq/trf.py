@@ -1,42 +1,16 @@
 """Trust Region Reflective algorithm for least-squares optimization.
 """
 import torch
-import torch.autograd as autograd
 import numpy as np
 from scipy.optimize import OptimizeResult
 from scipy.optimize._lsq.common import (print_header_nonlinear,
                                         print_iteration_nonlinear)
 
 from .lsmr import lsmr
-from .linear_operator import TorchLinearOperator
+from .linear_operator import jacobian_linop
 from .common import (right_multiplied_operator, build_quadratic_1d,
                      minimize_quadratic_1d, evaluate_quadratic,
                      solve_trust_region_2d, check_termination, update_tr_radius)
-
-
-def jacobian_linop(fun, x):
-    x = x.detach().requires_grad_(True)
-    f = fun(x)
-
-    # vector-jacobian product
-    def vjp(v):
-        v = v.view_as(f)
-        vjp, = autograd.grad(f, x, v, retain_graph=True)
-        return vjp.view(-1)
-
-    # jacobian-vector product
-    gf = torch.zeros_like(f, requires_grad=True)
-    gx, = autograd.grad(f, x, gf, create_graph=True)
-    def jvp(v):
-        v = v.view_as(x)
-        jvp, = autograd.grad(gx, gf, v, retain_graph=True)
-        return jvp.view(-1)
-
-    jac = TorchLinearOperator((f.numel(), x.numel()),
-                              matvec=jvp, rmatvec=vjp,
-                              device=x.device, dtype=x.dtype)
-
-    return jac
 
 
 def trf(fun, x0, f0, lb, ub, ftol, xtol, gtol, max_nfev, x_scale,
