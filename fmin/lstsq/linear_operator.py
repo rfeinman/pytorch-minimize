@@ -27,7 +27,7 @@ def jacobian_linop(fun, x):
 
 class TorchLinearOperator(object):
     """Linear operator defined in terms of user-specified operations."""
-    def __init__(self, shape, matvec, rmatvec=None):
+    def __init__(self, shape, matvec, rmatvec):
         self.shape = shape
         self._matvec = matvec
         self._rmatvec = rmatvec
@@ -36,13 +36,17 @@ class TorchLinearOperator(object):
         return self._matvec(x)
 
     def rmatvec(self, x):
-        if self._rmatvec is None:
-            raise NotImplementedError("rmatvec is not defined")
         return self._rmatvec(x)
 
     def matmat(self, X):
         return torch.hstack([self.matvec(col).view(-1,1) for col in X.T])
 
+    def transpose(self):
+        new_shape = (self.shape[1], self.shape[0])
+        return type(self)(new_shape, self._rmatvec, self._matvec)
+
     mv = matvec
     rmv = rmatvec
     matmul = matmat
+    t = transpose
+    T = property(transpose)
