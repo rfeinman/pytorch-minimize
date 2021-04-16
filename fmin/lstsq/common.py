@@ -249,8 +249,11 @@ def roots(p):
         # build companion matrix and find its eigenvalues (the roots)
         A = torch.diag(p.new_ones(N-2), -1)
         A[0,:] = -p[1:] / p[0]
-        roots = torch.eig(A, eigenvectors=False)[0]
-        roots = torch.view_as_complex(roots)
+        try:
+            # only available in pytorch 1.9 nightly
+            roots = torch.linalg.eigvals(A)
+        except AttributeError:
+            roots = torch.view_as_complex(torch.eig(A, eigenvectors=False)[0])
     else:
         roots = p.new_tensor([])
 
