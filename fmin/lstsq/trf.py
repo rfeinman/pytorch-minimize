@@ -14,7 +14,7 @@ from .common import (right_multiplied_operator, build_quadratic_1d,
 
 
 def trf(fun, x0, f0, lb, ub, ftol, xtol, gtol, max_nfev, x_scale,
-        lsmr_options, verbose):
+        tr_options, verbose):
     # For efficiency, it makes sense to run the simplified version of the
     # algorithm when no bounds are imposed. We decided to write the two
     # separate functions. It violates the DRY principle, but the individual
@@ -22,13 +22,13 @@ def trf(fun, x0, f0, lb, ub, ftol, xtol, gtol, max_nfev, x_scale,
     if lb.isneginf().all() and ub.isposinf().all():
         return trf_no_bounds(
             fun, x0, f0, ftol, xtol, gtol, max_nfev, x_scale,
-            verbose, **lsmr_options)
+            verbose, **tr_options)
     else:
         raise NotImplementedError('trf with bounds not currently supported.')
 
 
 def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8, max_nfev=None,
-                  x_scale=1.0, verbose=0, **lsmr_options):
+                  x_scale=1.0, verbose=0, **tr_options):
     if max_nfev is None:
         max_nfev = x0.numel() * 100
 
@@ -49,8 +49,8 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8, max_nfev=No
     if Delta == 0:
         Delta = 1.0
 
-    damp = lsmr_options.pop('damp', 0.0)
-    regularize = lsmr_options.pop('regularize', True)
+    damp = tr_options.pop('damp', 0.0)
+    regularize = tr_options.pop('regularize', True)
     reg_term = 0.
     alpha = 0.  # "Levenberg-Marquardt" parameter
     termination_status = None
@@ -85,7 +85,7 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8, max_nfev=No
             reg_term = -ag_value / Delta**2
 
         damp_full = (damp**2 + reg_term)**0.5
-        gn_h = lsmr(J_h, f, damp=damp_full, **lsmr_options)[0]
+        gn_h = lsmr(J_h, f, damp=damp_full, **tr_options)[0]
         S = torch.vstack((g_h, gn_h)).T  # [dim, 2]
         S, _ = torch.linalg.qr(S, mode='reduced')
         JS = J_h.matmul(S)  # TODO: can we avoid jacobian mm?
