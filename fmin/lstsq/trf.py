@@ -27,10 +27,12 @@ def trf(fun, x0, f0, lb, ub, ftol, xtol, gtol, max_nfev, x_scale,
         raise NotImplementedError('trf with bounds not currently supported.')
 
 
-def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8, max_nfev=None,
-                  x_scale=1.0, verbose=0, **tr_options):
+def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
+                  max_nfev=None, x_scale=1.0, tr_options=None, verbose=0):
     if max_nfev is None:
         max_nfev = x0.numel() * 100
+    if tr_options is None:
+        tr_options = {}
 
     x = x0.clone()
     if f0 is None:
