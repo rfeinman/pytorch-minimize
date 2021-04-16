@@ -93,11 +93,8 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
     suf = s * uf
 
     # Check if J has full rank and try Gauss-Newton step.
-    if m >= n:
-        threshold = EPS * m * s[0]
-        full_rank = s[-1] > threshold
-    else:
-        full_rank = False
+    eps = torch.finfo(s.dtype).eps
+    full_rank = m >= n and s[-1] > eps * m * s[0]
 
     if full_rank:
         p = -V.mv(uf / s)
