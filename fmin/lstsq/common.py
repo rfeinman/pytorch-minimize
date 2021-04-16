@@ -90,6 +90,10 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
         phi_prime = -(suf.pow(2) / denom.pow(3)).sum() / p_norm
         return phi, phi_prime
 
+    def set_alpha(alpha_lower, alpha_upper):
+        new_alpha = (alpha_lower * alpha_upper).sqrt()
+        return new_alpha.clamp_(0.001 * alpha_upper, None)
+
     suf = s * uf
 
     # Check if J has full rank and try Gauss-Newton step.
@@ -100,18 +104,12 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
         p = -V.mv(uf / s)
         if p.norm() <= Delta:
             return p, 0.0, 0
-
-    alpha_upper = suf.norm() / Delta
-
-    if full_rank:
         phi, phi_prime = phi_and_derivative(0., suf, s, Delta)
         alpha_lower = -phi / phi_prime
     else:
-        alpha_lower = alpha_upper.new_tensor(0.)
+        alpha_lower = s.new_tensor(0.)
 
-    def set_alpha(alpha_lower, alpha_upper):
-        new_alpha = (alpha_lower * alpha_upper).sqrt()
-        return new_alpha.clamp_(0.001 * alpha_upper, None)
+    alpha_upper = suf.norm() / Delta
 
     if initial_alpha is None or not full_rank and initial_alpha == 0:
         alpha = set_alpha(alpha_lower, alpha_upper)
