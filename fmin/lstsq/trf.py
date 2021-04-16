@@ -153,10 +153,8 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
             Delta = Delta_new
 
         if actual_reduction > 0:
-            x = x_new
-            f = f_new
-            f_true = f.clone()
-            cost = cost_new
+            x, f, cost = x_new, f_new, cost_new
+            f_true.copy_(f)
             J = jacobian(fun, x)
             g = J.T.mv(f)
             njev += 1
