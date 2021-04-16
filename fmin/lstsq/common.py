@@ -118,14 +118,15 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
 
     for it in range(max_iter):
         # if alpha is outside of bounds, set new value (5.5)(a)
-        alpha.masked_fill_((alpha < alpha_lower) | (alpha > alpha_upper),
-                           set_alpha(alpha_lower, alpha_upper))
+        alpha = torch.where((alpha < alpha_lower) | (alpha > alpha_upper),
+                            set_alpha(alpha_lower, alpha_upper),
+                            alpha)
 
         # compute new phi and phi' (5.5)(b)
         phi, phi_prime = phi_and_derivative(alpha, suf, s, Delta)
 
         # if phi is negative, update our upper bound  (5.5)(b)
-        alpha_upper.masked_fill_(phi < 0, alpha)
+        alpha_upper = torch.where(phi < 0, alpha, alpha_upper)
 
         # update lower bound  (5.5)(b)
         ratio = phi / phi_prime
