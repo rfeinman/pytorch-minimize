@@ -112,7 +112,7 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
     if initial_alpha is None or not full_rank and initial_alpha == 0:
         alpha = torch.max(0.001 * alpha_upper, (alpha_lower * alpha_upper)**0.5)
     else:
-        alpha = initial_alpha
+        alpha = initial_alpha.clone()
 
     for it in range(max_iter):
         if alpha < alpha_lower or alpha > alpha_upper:
@@ -121,7 +121,7 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
         phi, phi_prime = phi_and_derivative(alpha, suf, s, Delta)
 
         if phi < 0:
-            alpha_upper = alpha
+            alpha_upper = alpha.clone()
 
         ratio = phi / phi_prime
         alpha_lower = torch.max(alpha_lower, alpha - ratio)
