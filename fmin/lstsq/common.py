@@ -150,6 +150,35 @@ def evaluate_quadratic(J, g, s, diag=None):
     return 0.5 * q + l
 
 
+def roots(p):
+    # find non-zero array entries
+    non_zero = torch.where(p.view(-1) != 0)[0]
+
+    # Return an empty array if polynomial is all zeros
+    if len(non_zero) == 0:
+        return p.new_tensor([])
+
+    # find the number of trailing zeros -- this is the number of roots at 0.
+    trailing_zeros = len(p) - non_zero[-1] - 1
+
+    # strip leading and trailing zeros
+    p = p[non_zero[0]:non_zero[-1]+1]
+
+    N = len(p)
+    if N > 1:
+        # build companion matrix and find its eigenvalues (the roots)
+        A = torch.diag(p.new_ones(N-2), -1)
+        A[0,:] = -p[1:] / p[0]
+        roots = torch.eig(A, eigenvectors=False)[0]
+        roots = torch.view_as_complex(roots)
+    else:
+        roots = p.new_tensor([])
+
+    # tack any zeros onto the back of the array
+    roots = torch.hstack((roots, roots.new_zeros(trailing_zeros)))
+    return roots
+
+
 def solve_trust_region_2d(B, g, Delta):
     """Solve a general trust-region problem in 2 dimensions.
     The problem is reformulated as a 4th order algebraic equation,
@@ -177,10 +206,10 @@ def solve_trust_region_2d(B, g, Delta):
                            2 * (-a + c + f),
                            -b - d])
 
-    # TODO: pytorch implementation of np.roots?
-    t = np.roots(coeffs.data.cpu().numpy())  # Can handle leading zeros.
-    t = torch.tensor(t, device=B.device)
-    t = torch.real(t[torch.isreal(t)])
+    t = roots(coeffs)  # Can handle leading zeros.
+    t = t[t.isreal()]
+    if torch.is_complex(t):
+        t = t.real
 
     p = Delta * torch.vstack((2 * t / (1 + t**2), (1 - t**2) / (1 + t**2)))
     value = 0.5 * torch.sum(p * B.matmul(p), 0) + g.matmul(p)
