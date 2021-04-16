@@ -5,7 +5,7 @@ Copyright (C) 2010 David Fong and Michael Saunders
 """
 import torch
 
-from .linear_operator import TorchLinearOperator
+from .linear_operator import aslinearoperator
 
 
 def _sym_ortho(a, b):
@@ -25,16 +25,6 @@ def _sym_ortho(a, b):
         s = c * tau
         r = a / c
     return c, s, r
-
-
-def aslinearoperator(A):
-    if isinstance(A, TorchLinearOperator):
-        return A
-    elif isinstance(A, torch.Tensor):
-        assert A.dim() == 2
-        return TorchLinearOperator(A.shape, matvec=A.mv, rmatvec=A.T.mv)
-    else:
-        raise ValueError('Input must be either a Tensor or TorchLinearOperator')
 
 
 def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,

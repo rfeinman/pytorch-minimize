@@ -55,3 +55,13 @@ class TorchLinearOperator(object):
     matmul = matmat
     t = transpose
     T = property(transpose)
+
+
+def aslinearoperator(A):
+    if isinstance(A, TorchLinearOperator):
+        return A
+    elif isinstance(A, torch.Tensor):
+        assert A.dim() == 2
+        return TorchLinearOperator(A.shape, matvec=A.mv, rmatvec=A.T.mv)
+    else:
+        raise ValueError('Input must be either a Tensor or TorchLinearOperator')
