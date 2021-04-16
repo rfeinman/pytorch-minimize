@@ -63,13 +63,19 @@ The following solvers are available for _unconstrained_ minimization:
 
 3. __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
 
+To access the unconstrained minimizer interface, use the following import statement:
+
+    from fmin import minimize
+
+Use the argument `method` to specify which of the afformentioned solvers should be applied.
+
 ### Constrained Minimizers
 
 The following solvers are available for _constrained_ minimization:
 
-1. __Trust-Region Constrained Algorithm.__ Pytorch-minimize includes a single constrained minimization routine based on SciPy's `trust-constr` method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed, the trust-region interior point method is used. 
-
-NOTE: The current trust-region constrained minimizer is not a custom implementation, but rather a wrapper for SciPy's `optimize.minimize` routine (all rights reserved). It uses autograd behind the scenes to build jacobian & hessian callables before invoking scipy. Inputs and objectivs should use torch tensors like other pytorch-minimize routines. CUDA is supported but not recommended; data will be moved back-and-forth between GPU/CPU. This minimizer is not currently accessible through the `minimize` routine and instead must be imported directly as follows:
+1. __Trust-Region Constrained Algorithm.__ Pytorch-minimize includes a single constrained minimization routine based on SciPy's `trust-constr` method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed, the trust-region interior point method is used. NOTE: The current trust-region constrained minimizer is not a custom implementation, but rather a wrapper for SciPy's `optimize.minimize` routine. It uses autograd behind the scenes to build jacobian & hessian callables before invoking scipy. Inputs and objectivs should use torch tensors like other pytorch-minimize routines. CUDA is supported but not recommended; data will be moved back-and-forth between GPU/CPU. 
+   
+To access the constrained minimizer interface, use the following import statement:
 
     from fmin import minimize_constr
 
