@@ -54,8 +54,8 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
     cost = 0.5 * f.dot(f)
     g = J.T.mv(f)
 
-    scale, scale_inv = x_scale, 1 / x_scale
-    Delta = (x0 * scale_inv).norm()
+    scale = x_scale
+    Delta = (x0 / scale).norm()
     if Delta == 0:
         Delta.fill_(1.)
 
@@ -104,11 +104,13 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
 
             damp_full = (damp**2 + reg_term)**0.5
             gn_h = lsmr(J_h, f, damp=damp_full, **tr_options)[0]
-            S = torch.vstack((g_h, gn_h)).T  # [dim, 2]
-            S, _ = torch.linalg.qr(S, mode='reduced')
-            JS = J_h.matmul(S)  # TODO: can we avoid jacobian mm?
-            B_S = JS.T.matmul(JS)
-            g_S = S.T.matmul(g_h)
+            S = torch.vstack((g_h, gn_h)).T  # [n,2]
+            S, _ = torch.linalg.qr(S, mode='reduced')  # [n,2]
+            JS = J_h.matmul(S)  # [m,2]
+            B_S = JS.T.matmul(JS)  # [2,2]
+            g_S = S.T.mv(g_h)  # [2]
+        else:
+            raise Exception
 
         actual_reduction = -1
         while actual_reduction <= 0 and nfev < max_nfev:
@@ -118,6 +120,8 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
             elif tr_solver == 'lsmr':
                 p_S, _ = solve_trust_region_2d(B_S, g_S, Delta)
                 step_h = S.matmul(p_S)
+            else:
+                raise Exception
 
             predicted_reduction = -evaluate_quadratic(J_h, g_h, step_h)
             step = d * step_h
