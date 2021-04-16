@@ -43,11 +43,11 @@ Therefore, the user must specify 1st- and 2nd-order gradients explicitly (if the
 
 The motivation for this library is to offer a set of tools for deterministic optimization with analytical gradients via PyTorch's autograd.
 
-_
+__
 
 *MATLAB offers minimal autograd support via the Deep Learning Toolbox, but the integration is not seamless: data must be converted to "dlarray" structures, and only a [subset of functions](https://www.mathworks.com/help/deeplearning/ug/list-of-functions-with-dlarray-support.html) are supported.
 Furthermore, derivatives must still be constructed and provided as function handles. 
-Pytorch-minimize uses autograd to compute derivatives behind the scenes, so all you ever need to provide is your function.
+Pytorch-minimize uses autograd to compute derivatives behind the scenes, so all you provide is an objective function.
 
 ## Library
 
