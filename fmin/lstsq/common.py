@@ -84,10 +84,10 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
         It is defined as "norm of regularized (by alpha) least-squares
         solution minus `Delta`". Refer to [1]_.
         """
-        denom = s**2 + alpha
+        denom = s.pow(2) + alpha
         p_norm = (suf / denom).norm()
         phi = p_norm - Delta
-        phi_prime = -(suf ** 2 / denom**3).sum() / p_norm
+        phi_prime = -(suf.pow(2) / denom.pow(3)).sum() / p_norm
         return phi, phi_prime
 
     suf = s * uf
@@ -109,28 +109,37 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
     else:
         alpha_lower = alpha_upper.new_tensor(0.)
 
+    def set_alpha(alpha_lower, alpha_upper):
+        new_alpha = (alpha_lower * alpha_upper).sqrt()
+        return new_alpha.clamp_(0.001 * alpha_upper, None)
+
     if initial_alpha is None or not full_rank and initial_alpha == 0:
-        alpha = torch.max(0.001 * alpha_upper, (alpha_lower * alpha_upper).sqrt())
+        alpha = set_alpha(alpha_lower, alpha_upper)
     else:
         alpha = initial_alpha.clone()
 
     for it in range(max_iter):
-        alpha.masked_fill_(
-            (alpha < alpha_lower) | (alpha > alpha_upper),
-            (alpha_lower * alpha_upper).sqrt().clamp(0.001 * alpha_upper, None))
+        # if alpha is outside of bounds, set new value (5.5)(a)
+        alpha.masked_fill_((alpha < alpha_lower) | (alpha > alpha_upper),
+                           set_alpha(alpha_lower, alpha_upper))
 
+        # compute new phi and phi' (5.5)(b)
         phi, phi_prime = phi_and_derivative(alpha, suf, s, Delta)
 
+        # if phi is negative, update our upper bound  (5.5)(b)
         alpha_upper.masked_fill_(phi < 0, alpha)
 
+        # update lower bound  (5.5)(b)
         ratio = phi / phi_prime
         alpha_lower.clamp_(alpha-ratio, None)
+
+        # compute new alpha (5.5)(c)
         alpha.addcdiv_((phi + Delta) * ratio, Delta, value=-1)
 
         if phi.abs() < rtol * Delta:
             break
 
-    p = -V.mv(suf / (s**2 + alpha))
+    p = -V.mv(suf / (s.pow(2) + alpha))
 
     # Make the norm of p equal to Delta, p is changed only slightly during
     # this. It is done to prevent p lie outside the trust region (which can
