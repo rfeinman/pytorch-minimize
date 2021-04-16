@@ -71,7 +71,7 @@ The following solvers are available for _constrained_ minimization:
 
 NOTE: The current trust-region constrained minimizer is not a custom implementation, but rather a wrapper for SciPy's `optimize.minimize` routine (all rights reserved). It uses autograd behind the scenes to build jacobian & hessian callables before invoking scipy. Inputs and objectivs should use torch tensors like other pytorch-minimize routines. CUDA is supported but not recommended; data will be moved back-and-forth between GPU/CPU. This minimizer is not currently accessible through the `minimize` routine and instead must be imported directly as follows:
 
-    from fmin import fmin_trust_constr
+    from fmin import minimize_constr
 
 ### Nonlinear Least Squares
 
