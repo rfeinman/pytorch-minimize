@@ -120,7 +120,7 @@ def _build_bounds(bounds, x0):
 
 
 @torch.no_grad()
-def fmin_trust_constr(
+def minimize_constr(
         f, x0, constr=None, bounds=None, max_iter=None, tol=None, callback=None,
         disp=0, **kwargs):
     """
