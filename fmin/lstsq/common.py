@@ -110,22 +110,22 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
         alpha_lower = alpha_upper.new_tensor(0.)
 
     if initial_alpha is None or not full_rank and initial_alpha == 0:
-        alpha = torch.max(0.001 * alpha_upper, (alpha_lower * alpha_upper)**0.5)
+        alpha = torch.max(0.001 * alpha_upper, (alpha_lower * alpha_upper).sqrt())
     else:
         alpha = initial_alpha.clone()
 
     for it in range(max_iter):
-        if alpha < alpha_lower or alpha > alpha_upper:
-            alpha = torch.max(0.001 * alpha_upper, (alpha_lower * alpha_upper)**0.5)
+        alpha.masked_fill_(
+            (alpha < alpha_lower) | (alpha > alpha_upper),
+            (alpha_lower * alpha_upper).sqrt().clamp(0.001 * alpha_upper, None))
 
         phi, phi_prime = phi_and_derivative(alpha, suf, s, Delta)
 
-        if phi < 0:
-            alpha_upper = alpha.clone()
+        alpha_upper.masked_fill_(phi < 0, alpha)
 
         ratio = phi / phi_prime
-        alpha_lower = torch.max(alpha_lower, alpha - ratio)
-        alpha -= (phi + Delta) * ratio / Delta
+        alpha_lower.clamp_(alpha-ratio, None)
+        alpha.addcdiv_((phi + Delta) * ratio, Delta, value=-1)
 
         if phi.abs() < rtol * Delta:
             break
@@ -135,7 +135,7 @@ def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
     # Make the norm of p equal to Delta, p is changed only slightly during
     # this. It is done to prevent p lie outside the trust region (which can
     # cause problems later).
-    p *= Delta / p.norm()
+    p.mul_(Delta / p.norm())
 
     return p, alpha, it + 1
 
