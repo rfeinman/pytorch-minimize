@@ -57,14 +57,14 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
     scale, scale_inv = x_scale, 1 / x_scale
     Delta = (x0 * scale_inv).norm()
     if Delta == 0:
-        Delta = 1.0
+        Delta.fill_(1.)
 
     if tr_solver == 'lsmr':
         damp = tr_options.pop('damp', 0.0)
         regularize = tr_options.pop('regularize', True)
         reg_term = 0.
 
-    alpha = 0.  # "Levenberg-Marquardt" parameter
+    alpha = x0.new_tensor(0.)  # "Levenberg-Marquardt" parameter
     termination_status = None
     iteration = 0
     step_norm = None
