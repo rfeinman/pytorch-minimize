@@ -89,7 +89,7 @@ The least squares interface can be imported as follows:
 
 The least_squares function is heavily motivated by scipy's `optimize.least_squares`. 
 Much of the scipy code was borrowed directly (all rights reserved) and ported from numpy to torch. 
-Rather than having the user provide a jacobian function, in the new interface jacobian-vector products are computed seamlessly on the backend with autograd. 
+Rather than have the user provide a jacobian function, in the new interface, jacobian-vector products are computed behind the scenes with autograd. 
 At the moment, only the Trust Region Reflective ("trf") method is implemented, and bounds are not yet supported.
 
 ## Examples
