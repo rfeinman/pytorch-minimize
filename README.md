@@ -49,8 +49,11 @@ _
 Furthermore, derivatives must still be constructed and provided as function handles. 
 Pytorch-minimize uses autograd to compute derivatives behind the scenes, so all you ever need to provide is your function.
 
+## Library
 
-## Unconstrained Minimizers
+The pytorch-minimize library includes solvers for general-purpose function minimization (unconstrained & constrained), as well as for nonlinear least squares problems.
+
+### Unconstrained Minimizers
 
 1. __BFGS/L-BFGS.__ BFGS is a cannonical quasi-Newton method for unconstrained optimization. I've implemented both the standard BFGS and the "limited memory" L-BFGS. For smaller scale problems where memory is not a concern, BFGS should be significantly faster than L-BFGS (especially on CUDA) since it avoids Python for loops and instead uses pure torch.
    
@@ -58,7 +61,7 @@ Pytorch-minimize uses autograd to compute derivatives behind the scenes, so all 
 
 3. __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
 
-## Constrained Minimizers
+### Constrained Minimizers
 
 1. __Trust-Region Constrained Algorithm.__ Pytorch-minimize includes a single constrained minimization routine based on SciPy's `trust-constr` method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed, the trust-region interior point method is used. 
 
@@ -66,7 +69,7 @@ NOTE: The current trust-region constrained minimizer is not a custom implementat
 
     from fmin import fmin_trust_constr
 
-## Nonlinear Least Squares
+### Nonlinear Least Squares
 
 The library also includes specialized solvers for nonlinear least squares problems. These solvers revolve around the Gauss-Newton method, a modification of Newton's method tailored to the lstsq setting. The least squares interface can be imported as follows:
 
