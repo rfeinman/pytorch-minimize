@@ -11,6 +11,7 @@ def in_bounds(x, lb, ub):
     """Check if a point lies within bounds."""
     return torch.all((x >= lb) & (x <= ub))
 
+
 def find_active_constraints(x, lb, ub, rtol=1e-10):
     """Determine which constraints are active in a given point.
     The threshold is computed using `rtol` and the absolute value of the
@@ -45,6 +46,7 @@ def find_active_constraints(x, lb, ub, rtol=1e-10):
 
     return active
 
+
 def make_strictly_feasible(x, lb, ub, rstep=1e-10):
     """Shift a point to the interior of a feasible region.
     Each element of the returned vector is at least at a relative distance
@@ -69,6 +71,78 @@ def make_strictly_feasible(x, lb, ub, rstep=1e-10):
     return x_new
 
 
+def solve_lsq_trust_region(n, m, uf, s, V, Delta, initial_alpha=None,
+                           rtol=0.01, max_iter=10):
+    """Solve a trust-region problem arising in least-squares minimization.
+    This function implements a method described by J. J. More [1]_ and used
+    in MINPACK, but it relies on a single SVD of Jacobian instead of series
+    of Cholesky decompositions. Before running this function, compute:
+    ``U, s, VT = svd(J, full_matrices=False)``.
+    """
+    def phi_and_derivative(alpha, suf, s, Delta):
+        """Function of which to find zero.
+        It is defined as "norm of regularized (by alpha) least-squares
+        solution minus `Delta`". Refer to [1]_.
+        """
+        denom = s**2 + alpha
+        p_norm = (suf / denom).norm()
+        phi = p_norm - Delta
+        phi_prime = -(suf ** 2 / denom**3).sum() / p_norm
+        return phi, phi_prime
+
+    suf = s * uf
+
+    # Check if J has full rank and try Gauss-Newton step.
+    if m >= n:
+        threshold = EPS * m * s[0]
+        full_rank = s[-1] > threshold
+    else:
+        full_rank = False
+
+    if full_rank:
+        p = -V.mv(uf / s)
+        if p.norm() <= Delta:
+            return p, 0.0, 0
+
+    alpha_upper = suf.norm() / Delta
+
+    if full_rank:
+        phi, phi_prime = phi_and_derivative(0., suf, s, Delta)
+        alpha_lower = -phi / phi_prime
+    else:
+        alpha_lower = alpha_upper.new_tensor(0.)
+
+    if initial_alpha is None or not full_rank and initial_alpha == 0:
+        alpha = torch.max(0.001 * alpha_upper, (alpha_lower * alpha_upper)**0.5)
+    else:
+        alpha = initial_alpha
+
+    for it in range(max_iter):
+        if alpha < alpha_lower or alpha > alpha_upper:
+            alpha = torch.max(0.001 * alpha_upper, (alpha_lower * alpha_upper)**0.5)
+
+        phi, phi_prime = phi_and_derivative(alpha, suf, s, Delta)
+
+        if phi < 0:
+            alpha_upper = alpha
+
+        ratio = phi / phi_prime
+        alpha_lower = torch.max(alpha_lower, alpha - ratio)
+        alpha -= (phi + Delta) * ratio / Delta
+
+        if phi.abs() < rtol * Delta:
+            break
+
+    p = -V.mv(suf / (s**2 + alpha))
+
+    # Make the norm of p equal to Delta, p is changed only slightly during
+    # this. It is done to prevent p lie outside the trust region (which can
+    # cause problems later).
+    p *= Delta / p.norm()
+
+    return p, alpha, it + 1
+
+
 def right_multiplied_operator(J, d):
     """Return J diag(d) as LinearOperator."""
     if isinstance(J, LinearOperator):
@@ -85,6 +159,7 @@ def right_multiplied_operator(J, d):
     else:
         raise ValueError('Expected J to be a LinearOperator or '
                          'TorchLinearOperator but found {}'.format(type(J)))
+
 
 def build_quadratic_1d(J, g, s, diag=None, s0=None):
     """Parameterize a multivariate quadratic function along a line.

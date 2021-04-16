@@ -234,8 +234,6 @@ def least_squares(
 
     if tr_solver not in [None, 'exact', 'lsmr']:
         raise ValueError("`tr_solver` must be None, 'exact' or 'lsmr'.")
-    elif tr_solver == 'exact':
-        raise NotImplementedError("exact trust solver not currently supported.")
 
     if verbose not in [0, 1, 2]:
         raise ValueError("`verbose` must be in [0, 1, 2].")
@@ -293,7 +291,7 @@ def least_squares(
 
     if method == 'trf':
         result = trf(fun_wrapped, x0, f0, lb, ub, ftol, xtol, gtol,
-                     max_nfev, x_scale, tr_options.copy(), verbose)
+                     max_nfev, x_scale, tr_solver, tr_options.copy(), verbose)
     elif method == 'dogbox':
         raise NotImplementedError("'dogbox' method not yet implemented")
         # if tr_solver == 'lsmr' and 'regularize' in tr_options:
