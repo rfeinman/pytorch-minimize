@@ -81,11 +81,16 @@ To access the constrained minimizer interface, use the following import statemen
 
 ### Nonlinear Least Squares
 
-The library also includes specialized solvers for nonlinear least squares problems. These solvers revolve around the Gauss-Newton method, a modification of Newton's method tailored to the lstsq setting. The least squares interface can be imported as follows:
+The library also includes specialized solvers for nonlinear least squares problems. 
+These solvers revolve around the Gauss-Newton method, a modification of Newton's method tailored to the lstsq setting. 
+The least squares interface can be imported as follows:
 
     from fmin import least_squares
 
-The least squares solver is heavily motivated by scipy's `optimize.least_squares`. Much of the scipy code was borrowed directly (all rights reserved) and ported from numpy to torch. Rather than having the user provide a jacobian function, in the new interface jacobian-vector products are computed seamlessly on the backend with autograd. At the moment, only the Trust Region Reflective ("trf") method is implemented, and bounds are not yet supported.
+The least_squares function is heavily motivated by scipy's `optimize.least_squares`. 
+Much of the scipy code was borrowed directly (all rights reserved) and ported from numpy to torch. 
+Rather than having the user provide a jacobian function, in the new interface jacobian-vector products are computed seamlessly on the backend with autograd. 
+At the moment, only the Trust Region Reflective ("trf") method is implemented, and bounds are not yet supported.
 
 ## Examples
 
@@ -99,5 +104,7 @@ For constrained optimization, the [adversarial examples tutorial](https://github
 
 ## Onging work
 
-- Optimizer API. Coming soon there will be a new alternative API revolving around the `torch.optim.Optimizer` class. An early prototype can be found at `fmin/optim.py`. It has not been rigorously tested, and documentation is limited.
+- Optimizer API. Coming soon there will be a new alternative API revolving around the `torch.optim.Optimizer` class. 
+  An early prototype can be found at `fmin/optim.py`. 
+  It has not been rigorously tested, and documentation is limited.
 - Custom constrained optimizers.
