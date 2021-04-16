@@ -22,7 +22,7 @@ def trf(fun, x0, f0, lb, ub, ftol, xtol, gtol, max_nfev, x_scale,
     if lb.isneginf().all() and ub.isposinf().all():
         return trf_no_bounds(
             fun, x0, f0, ftol, xtol, gtol, max_nfev, x_scale,
-            verbose, **tr_options)
+            tr_options, verbose)
     else:
         raise NotImplementedError('trf with bounds not currently supported.')
 
