@@ -150,15 +150,6 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         b = b.squeeze()
     damp = torch.as_tensor(damp, dtype=b.dtype, device=b.device)
 
-    msg = ('The exact solution is x = 0, or x = x0, if x0 was given   ',
-           'Ax - b is small enough, given atol, btol                  ',
-           'The least-squares solution is good enough, given atol     ',
-           'The estimate of cond(Abar) has exceeded conlim            ',
-           'Ax - b is small enough for this machine                   ',
-           'The least-squares solution is good enough for this machine',
-           'Cond(Abar) seems to be too large for this machine         ',
-           'The iteration limit has been reached                      ')
-
     hdg1 = '   itn      x(1)       norm r    norm Ar'
     hdg2 = ' compatible   LS      norm A   cond A'
     pfreq = 20   # print frequency (for repeating the heading)
@@ -167,7 +158,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     m, n = A.shape
 
     # stores the num of singular values
-    minDim = min([m, n])
+    minDim = min(m, n)
 
     if maxiter is None:
         maxiter = minDim
@@ -180,18 +171,18 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         print('atol = %8.2e                 conlim = %8.2e\n' % (atol, conlim))
         print('btol = %8.2e             maxiter = %8g\n' % (btol, maxiter))
 
-    u = b
+    u = b.clone()
     normb = b.norm()
     if x0 is None:
         x = b.new_zeros(n)
         beta = normb.clone()
     else:
-        x = torch.atleast_1d(x0)
-        u = u - A.matvec(x)
+        x = torch.atleast_1d(x0).clone()
+        u.sub_(A.matvec(x))
         beta = u.norm()
 
     if beta > 0:
-        u = (1 / beta) * u
+        u.div_(beta)
         v = A.rmatvec(u)
         alpha = v.norm()
     else:
@@ -199,13 +190,13 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         alpha = b.new_tensor(0)
 
     if alpha > 0:
-        v = (1 / alpha) * v
+        v.div_(alpha)
 
     # Initialize variables for 1st iteration.
 
     itn = b.new_tensor(0, dtype=torch.long)
     zetabar = alpha * beta
-    alphabar = alpha
+    alphabar = alpha.clone()
     rho = b.new_tensor(1)
     rhobar = b.new_tensor(1)
     cbar = b.new_tensor(1)
@@ -216,7 +207,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     # Initialize variables for estimation of ||r||.
 
-    betadd = beta
+    betadd = beta.clone()
     betad = b.new_tensor(0)
     rhodold = b.new_tensor(1)
     tautildeold = b.new_tensor(0)
@@ -226,27 +217,21 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     # Initialize variables for estimation of ||A|| and cond(A)
 
-    normA2 = alpha * alpha
+    normA2 = alpha.square()
     maxrbar = b.new_tensor(0)
     minrbar = b.new_tensor(0.99 * torch.finfo(b.dtype).max)
-    normA = torch.sqrt(normA2)
+    normA = normA2.sqrt()
     condA = b.new_tensor(1)
     normx = b.new_tensor(0)
 
     # Items for use in stopping rules, normb set earlier
-    #istop = 0
-    ctol = 0
-    if conlim > 0:
-        ctol = 1 / conlim
-    normr = beta
+    ctol = 1 / conlim if conlim > 0 else 0.
+    normr = beta.clone()
 
     # Reverse the order here from the original matlab code because
     # there was an error on return when arnorm==0
     normar = alpha * beta
     if normar == 0:
-        if show:
-            print(msg[0])
-        #return x, istop, itn, normr, normar, normA, condA, normx
         return x, itn, normr, normar, normA, condA, normx
 
     if show:
@@ -261,24 +246,27 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     # Main iteration loop.
     while True:
-        itn = itn + 1
+        itn.add_(1)
 
         # Perform the next step of the bidiagonalization to obtain the
         # next  beta, u, alpha, v.  These satisfy the relations
         #         beta*u  =  a*v   -  alpha*u,
         #        alpha*v  =  A'*u  -  beta*v.
 
-        u *= -alpha
-        u += A.matvec(v)
+        u.mul_(-alpha).add_(A.matvec(v))
         beta = u.norm()
 
+        # beta_pos = beta > 0
+        # u = torch.where(beta_pos, u / beta, u)
+        # v = torch.where(beta_pos, -v*beta + A.rmatvec(u), v)
+        # alpha = torch.where(beta_pos, v.norm(), alpha)
+        # v = torch.where(beta_pos & (alpha > 0), v / alpha, v)
         if beta > 0:
-            u *= (1 / beta)
-            v *= -beta
-            v += A.rmatvec(u)
+            u.div_(beta)
+            v.mul_(-beta).add_(A.rmatvec(u))
             alpha = v.norm()
             if alpha > 0:
-                v *= (1 / alpha)
+                v.div_(alpha)
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
 
@@ -288,28 +276,28 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
         # Use a plane rotation (Q_i) to turn B_i to R_i
 
-        rhoold = rho
+        rhoold = rho.clone()
         c, s, rho = _sym_ortho(alphahat, beta)
         thetanew = s*alpha
         alphabar = c*alpha
 
         # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
 
-        rhobarold = rhobar
-        zetaold = zeta
+        rhobarold = rhobar.clone()
+        zetaold = zeta.clone()
         thetabar = sbar * rho
         rhotemp = cbar * rho
         cbar, sbar, rhobar = _sym_ortho(cbar * rho, thetanew)
-        zeta = cbar * zetabar
-        zetabar = - sbar * zetabar
+        zeta = torch.mul(cbar, zetabar, out=zeta)
+        zetabar.mul_(-sbar)
 
         # Update h, h_hat, x.
 
-        hbar *= - (thetabar * rho / (rhoold * rhobarold))
-        hbar += h
-        x += (zeta / (rho * rhobar)) * hbar
-        h *= - (thetanew / rho)
-        h += v
+        hbar.mul_(-thetabar * rho).div_(rhoold * rhobarold)
+        hbar.add_(h)
+        x.addcdiv_(zeta * hbar, rho * rhobar)
+        h.mul_(-thetanew).div_(rho)
+        h.add_(v)
 
         # Estimate of ||r||.
 
@@ -324,37 +312,35 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         # Apply rotation Qtilde_{k-1}.
         # betad = betad_{k-1} here.
 
-        thetatildeold = thetatilde
+        thetatildeold = thetatilde.clone()
         ctildeold, stildeold, rhotildeold = _sym_ortho(rhodold, thetabar)
-        thetatilde = stildeold * rhobar
-        rhodold = ctildeold * rhobar
-        betad = - stildeold * betad + ctildeold * betahat
+        thetatilde = torch.mul(stildeold, rhobar, out=thetatilde)
+        rhodold = torch.mul(ctildeold, rhobar, out=rhodold)
+        betad.mul_(-stildeold).addcmul_(ctildeold, betahat)
 
         # betad   = betad_k here.
         # rhodold = rhod_k  here.
 
-        tautildeold = (zetaold - thetatildeold * tautildeold) / rhotildeold
+        tautildeold.mul_(-thetatildeold).add_(zetaold).div_(rhotildeold)
         taud = (zeta - thetatilde * tautildeold) / rhodold
-        d = d + betacheck * betacheck
-        normr = torch.sqrt(d + (betad - taud)**2 + betadd * betadd)
+        d.addcmul_(betacheck, betacheck)
+        normr = torch.sqrt(d + (betad - taud).square() + betadd.square(), out=normr)
 
         # Estimate ||A||.
-        normA2 = normA2 + beta * beta
-        normA = torch.sqrt(normA2)
-        normA2 = normA2 + alpha * alpha
+        normA2.addcmul_(beta, beta)
+        normA = torch.sqrt(normA2, out=normA)
+        normA2.addcmul_(alpha, alpha)
 
         # Estimate cond(A).
-        maxrbar = torch.max(maxrbar, rhobarold)
+        maxrbar = torch.max(maxrbar, rhobarold, out=maxrbar)
         minrbar = torch.where(itn > 1, torch.min(minrbar, rhobarold), minrbar)
-        # if itn > 1:
-        #     minrbar = torch.min(minrbar, rhobarold)
         condA = torch.max(maxrbar, rhotemp) / torch.min(minrbar, rhotemp)
 
         # Test for convergence.
 
         # Compute norms for convergence testing.
-        normar = torch.abs(zetabar)
-        normx = x.norm()
+        normar = torch.abs(zetabar, out=normar)
+        normx = torch.norm(x, out=normx)
 
         # Now use these norms to estimate certain other quantities,
         # some of which will be small near a solution.
@@ -406,8 +392,6 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     if show:
         print(' ')
         print('LSMR finished')
-        #print(msg[istop])
-        #print('istop =%8g    normr =%8.1e' % (istop, normr))
         print('               normr =%8.1e' % normr)
         print('    normA =%8.1e    normAr =%8.1e' % (normA, normar))
         print('itn   =%8g    condA =%8.1e' % (itn, condA))
