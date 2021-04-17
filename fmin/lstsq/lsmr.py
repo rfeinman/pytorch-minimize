@@ -38,14 +38,13 @@ def _sym_ortho(a, b):
     c = a_sign / torch.sqrt(1 + tau.square())
     s = c * tau
     r = a / c
-    stop = a.new_tensor(False, dtype=torch.bool)
 
     # case 1
     case1 = b.eq(0)
     c = torch.where(case1, a_sign, c)
     s = torch.where(case1, torch.zeros_like(s), s)
     r = torch.where(case1, a_abs, r)
-    stop.logical_or_(case1)
+    stop = case1
 
     # case 2
     case2 = torch.logical_and(a.eq(0), ~stop)
@@ -204,7 +203,6 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     # Initialize variables for 1st iteration.
 
-    #itn = 0
     itn = b.new_tensor(0, dtype=torch.long)
     zetabar = alpha * beta
     alphabar = alpha
