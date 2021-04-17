@@ -1,5 +1,6 @@
 import torch
 import torch.autograd as autograd
+from torch._vmap_internals import _vmap
 
 
 def jacobian_dense(fun, x, vectorize=True):
@@ -44,7 +45,10 @@ class TorchLinearOperator(object):
         return self._rmatvec(x)
 
     def matmat(self, X):
-        return torch.hstack([self.matvec(col).view(-1,1) for col in X.T])
+        try:
+            return _vmap(self.matvec)(X.T).T
+        except:
+            return torch.hstack([self.matvec(col).view(-1,1) for col in X.T])
 
     def transpose(self):
         new_shape = (self.shape[1], self.shape[0])
