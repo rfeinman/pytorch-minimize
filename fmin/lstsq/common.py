@@ -229,39 +229,6 @@ def evaluate_quadratic(J, g, s, diag=None):
 
     return 0.5 * q + l
 
-
-def roots(p):
-    # find non-zero array entries
-    non_zero = torch.where(p.view(-1) != 0)[0]
-
-    # Return an empty array if polynomial is all zeros
-    if len(non_zero) == 0:
-        return p.new_tensor([])
-
-    # find the number of trailing zeros -- this is the number of roots at 0.
-    trailing_zeros = len(p) - non_zero[-1] - 1
-
-    # strip leading and trailing zeros
-    p = p[non_zero[0]:non_zero[-1]+1]
-
-    N = len(p)
-    if N > 1:
-        # build companion matrix and find its eigenvalues (the roots)
-        A = torch.diag(p.new_ones(N-2), -1)
-        A[0,:] = -p[1:] / p[0]
-        try:
-            # only available in pytorch 1.9 nightly
-            roots = torch.linalg.eigvals(A)
-        except AttributeError:
-            roots = torch.view_as_complex(torch.eig(A, eigenvectors=False)[0])
-    else:
-        roots = p.new_tensor([])
-
-    # tack any zeros onto the back of the array
-    roots = torch.hstack((roots, roots.new_zeros(trailing_zeros)))
-    return roots
-
-
 def solve_trust_region_2d(B, g, Delta):
     """Solve a general trust-region problem in 2 dimensions.
     The problem is reformulated as a 4th order algebraic equation,
@@ -275,7 +242,13 @@ def solve_trust_region_2d(B, g, Delta):
     except RuntimeError as exc:
         if not 'cholesky' in exc.args[0]:
             raise
-        pass
+
+    # move things to numpy
+    device = B.device
+    dtype = B.dtype
+    B = B.data.cpu().numpy()
+    g = g.data.cpu().numpy()
+    Delta = float(Delta)
 
     a = B[0, 0] * Delta**2
     b = B[0, 1] * Delta**2
@@ -283,21 +256,16 @@ def solve_trust_region_2d(B, g, Delta):
     d = g[0] * Delta
     f = g[1] * Delta
 
-    coeffs = B.new_tensor([-b + d,
-                           2 * (a - c + f),
-                           6 * b,
-                           2 * (-a + c + f),
-                           -b - d])
+    coeffs = np.array([-b + d, 2 * (a - c + f), 6 * b, 2 * (-a + c + f), -b - d])
+    t = np.roots(coeffs)  # Can handle leading zeros.
+    t = np.real(t[np.isreal(t)])
 
-    t = roots(coeffs)  # Can handle leading zeros.
-    t = t[t.isreal()]
-    if torch.is_complex(t):
-        t = t.real
+    p = Delta * np.vstack((2 * t / (1 + t**2), (1 - t**2) / (1 + t**2)))
+    value = 0.5 * np.sum(p * B.dot(p), axis=0) + np.dot(g, p)
+    p = p[:, np.argmin(value)]
 
-    p = Delta * torch.vstack((2 * t / (1 + t**2), (1 - t**2) / (1 + t**2)))
-    value = 0.5 * torch.sum(p * B.matmul(p), 0) + g.matmul(p)
-    i = torch.argmin(value)
-    p = p[:, i]
+    # convert back to torch
+    p = torch.tensor(p, device=device, dtype=dtype)
 
     return p, False
 
