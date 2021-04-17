@@ -105,7 +105,8 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
             damp_full = (damp**2 + reg_term)**0.5
             gn_h = lsmr(J_h, f, damp=damp_full, **tr_options)[0]
             S = torch.vstack((g_h, gn_h)).T  # [n,2]
-            S, _ = torch.linalg.qr(S, mode='reduced')  # [n,2]
+            # Dispatch qr to CPU so long as pytorch/pytorch#22573 is not fixed
+            S = torch.linalg.qr(S.cpu(), mode='reduced')[0].to(S.device)  # [n,2]
             JS = J_h.matmul(S)  # [m,2]
             B_S = JS.T.matmul(JS)  # [2,2]
             g_S = S.T.mv(g_h)  # [2]
