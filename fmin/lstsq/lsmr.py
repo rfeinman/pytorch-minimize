@@ -3,63 +3,136 @@ Code modified from scipy.sparse.linalg.lsmr
 
 Copyright (C) 2010 David Fong and Michael Saunders
 """
+from typing import Tuple
+from torch import Tensor
 import torch
 
 from .linear_operator import aslinearoperator
 
 
-# def _sym_ortho(a, b):
-#     """Stable implementation of Givens rotation."""
-#     if b == 0:
-#         return torch.sign(a), 0, torch.abs(a)
-#     elif a == 0:
-#         return 0, torch.sign(b), torch.abs(b)
-#     elif torch.abs(b) > torch.abs(a):
-#         tau = a / b
-#         s = torch.sign(b) / torch.sqrt(1 + tau * tau)
-#         c = s * tau
-#         r = b / s
-#     else:
-#         tau = b / a
-#         c = torch.sign(a) / torch.sqrt(1 + tau * tau)
-#         s = c * tau
-#         r = a / c
-#     return c, s, r
-
-
-def _sym_ortho(a, b):
+@torch.jit.script
+def _sym_ortho(a, b) -> Tuple[Tensor, Tensor, Tensor]:
     """Stable implementation of Givens rotation."""
-    a_sign = a.sign()
-    b_sign = b.sign()
-    a_abs = a.abs()
-    b_abs = b.abs()
-
-    tau = b / a
-    c = a_sign / torch.sqrt(1 + tau.square())
-    s = c * tau
-    r = a / c
-
-    # case 1
-    case1 = b.eq(0)
-    c = torch.where(case1, a_sign, c)
-    s = torch.where(case1, torch.zeros_like(s), s)
-    r = torch.where(case1, a_abs, r)
-    stop = case1
-
-    # case 2
-    case2 = torch.logical_and(a.eq(0), ~stop)
-    c = torch.where(case2, torch.zeros_like(c), c)
-    s = torch.where(case2, b_sign, s)
-    r = torch.where(case2, b_abs, r)
-    stop.logical_or_(case2)
-
-    # case 3
-    case3 = torch.logical_and(b_abs.gt(a_abs), ~stop)
-    s = torch.where(case3, b_sign / torch.sqrt(1 + 1 / tau.square()), s)
-    c = torch.where(case3, s / tau, c)
-    r = torch.where(case3, b / s, r)
-
+    zero = torch.tensor(0., dtype=a.dtype, device=a.device)
+    if b == 0:
+        return torch.sign(a), zero, torch.abs(a)
+    elif a == 0:
+        return zero, torch.sign(b), torch.abs(b)
+    elif torch.abs(b) > torch.abs(a):
+        tau = a / b
+        s = torch.sign(b) / torch.sqrt(1 + torch.square(tau))
+        c = s * tau
+        r = b / s
+    else:
+        tau = b / a
+        c = torch.sign(a) / torch.sqrt(1 + torch.square(tau))
+        s = c * tau
+        r = a / c
     return c, s, r
+
+
+@torch.jit.script
+def inner_step(
+        x, h, v, d, alpha, beta, zeta, rho, rhodold, thetatilde, tautildeold,
+        hbar, alphabar, zetabar, rhobar, cbar, sbar, betad, betadd, normA,
+        normA2, normb, normr, normar, normx, minrbar, maxrbar,
+        damp, atol: float, btol: float, ctol: float, itn: int
+) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+
+    # Construct rotation Qhat_{k,2k+1}.
+
+    chat, shat, alphahat = _sym_ortho(alphabar, damp)
+
+    # Use a plane rotation (Q_i) to turn B_i to R_i
+
+    rhoold = rho.clone()
+    c, s, rho = _sym_ortho(alphahat, beta)
+    thetanew = s*alpha
+    alphabar.copy_(c*alpha)
+
+    # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
+
+    rhobarold = rhobar.clone()
+    zetaold = zeta.clone()
+    thetabar = sbar * rho
+    rhotemp = cbar * rho
+    cbar, sbar, rhobar = _sym_ortho(cbar * rho, thetanew)
+    zeta = torch.mul(cbar, zetabar, out=zeta)
+    zetabar.mul_(-sbar)
+
+    # Update h, h_hat, x.
+
+    hbar.mul_(-thetabar * rho).div_(rhoold * rhobarold)
+    hbar.add_(h)
+    x.addcdiv_(zeta * hbar, rho * rhobar)
+    h.mul_(-thetanew).div_(rho)
+    h.add_(v)
+
+    # Estimate of ||r||.
+
+    # Apply rotation Qhat_{k,2k+1}.
+    betaacute = chat * betadd
+    betacheck = -shat * betadd
+
+    # Apply rotation Q_{k,k+1}.
+    betahat = c * betaacute
+    betadd.copy_(-s * betaacute)
+
+    # Apply rotation Qtilde_{k-1}.
+    # betad = betad_{k-1} here.
+
+    thetatildeold = thetatilde.clone()
+    ctildeold, stildeold, rhotildeold = _sym_ortho(rhodold, thetabar)
+    thetatilde = torch.mul(stildeold, rhobar, out=thetatilde)
+    rhodold = torch.mul(ctildeold, rhobar, out=rhodold)
+    betad.mul_(-stildeold).addcmul_(ctildeold, betahat)
+
+    # betad   = betad_k here.
+    # rhodold = rhod_k  here.
+
+    tautildeold.mul_(-thetatildeold).add_(zetaold).div_(rhotildeold)
+    taud = (zeta - thetatilde * tautildeold) / rhodold
+    d.addcmul_(betacheck, betacheck)
+    normr = torch.sqrt(d + (betad - taud).square() + betadd.square(), out=normr)
+
+    # Estimate ||A||.
+    normA2.addcmul_(beta, beta)
+    normA = torch.sqrt(normA2, out=normA)
+    normA2.addcmul_(alpha, alpha)
+
+    # Estimate cond(A).
+    maxrbar = torch.max(maxrbar, rhobarold, out=maxrbar)
+    if itn > 1:
+        minrbar = torch.min(minrbar, rhobarold, out=minrbar)
+    condA = torch.max(maxrbar, rhotemp) / torch.min(minrbar, rhotemp)
+
+    # Test for convergence.
+
+    # Compute norms for convergence testing.
+    normar = torch.abs(zetabar, out=normar)
+    normx = torch.norm(x, out=normx)
+
+    # Now use these norms to estimate certain other quantities,
+    # some of which will be small near a solution.
+
+    test1 = normr / normb
+    test2 = (normar / (normA * normr)).masked_fill((normA * normr) == 0, float('inf'))
+    test3 = 1 / condA
+    t1 = test1 / (1 + normA * normx / normb)
+    rtol = btol + atol * normA * normx / normb
+
+    # The first 3 tests guard against extremely small values of
+    # atol, btol or ctol.  (The user may have set any or all of
+    # the parameters atol, btol, conlim  to 0.)
+    # The effect is equivalent to the normAl tests using
+    # atol = eps,  btol = eps,  conlim = 1/eps.
+
+    # The second 3 tests allow for tolerances set by the user.
+
+    stop = ((1 + test3 <= 1) | (1 + test2 <= 1) | (1 + t1 <= 1)
+            | (test3 <= ctol) | (test2 <= atol) | (test1 <= rtol))
+
+    return stop, rho, cbar, sbar, rhobar, betad
 
 
 @torch.no_grad()
@@ -150,10 +223,10 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         b = b.squeeze()
     damp = torch.as_tensor(damp, dtype=b.dtype, device=b.device)
 
-    hdg1 = '   itn      x(1)       norm r    norm Ar'
-    hdg2 = ' compatible   LS      norm A   cond A'
-    pfreq = 20   # print frequency (for repeating the heading)
-    pcount = 0   # print counter
+    # hdg1 = '   itn      x(1)       norm r    norm Ar'
+    # hdg2 = ' compatible   LS      norm A   cond A'
+    # pfreq = 20   # print frequency (for repeating the heading)
+    # pcount = 0   # print counter
 
     m, n = A.shape
 
@@ -163,13 +236,13 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     if maxiter is None:
         maxiter = minDim
 
-    if show:
-        print(' ')
-        print('LSMR            Least-squares solution of  Ax = b\n')
-        print(f'The matrix A has {m} rows and {n} columns')
-        print('damp = %20.14e\n' % (damp))
-        print('atol = %8.2e                 conlim = %8.2e\n' % (atol, conlim))
-        print('btol = %8.2e             maxiter = %8g\n' % (btol, maxiter))
+    # if show:
+    #     print(' ')
+    #     print('LSMR            Least-squares solution of  Ax = b\n')
+    #     print(f'The matrix A has {m} rows and {n} columns')
+    #     print('damp = %20.14e\n' % (damp))
+    #     print('atol = %8.2e                 conlim = %8.2e\n' % (atol, conlim))
+    #     print('btol = %8.2e             maxiter = %8g\n' % (btol, maxiter))
 
     u = b.clone()
     normb = b.norm()
@@ -194,7 +267,6 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
     # Initialize variables for 1st iteration.
 
-    itn = b.new_tensor(0, dtype=torch.long)
     zetabar = alpha * beta
     alphabar = alpha.clone()
     rho = b.new_tensor(1)
@@ -232,21 +304,20 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     # there was an error on return when arnorm==0
     normar = alpha * beta
     if normar == 0:
-        return x, itn, normr, normar, normA, condA, normx
+        return x, 0, normr, normar, normA, condA, normx
 
-    if show:
-        print(' ')
-        print(hdg1, hdg2)
-        test1 = 1
-        test2 = alpha / beta
-        str1 = '%6g %12.5e' % (itn, x[0])
-        str2 = ' %10.3e %10.3e' % (normr, normar)
-        str3 = '  %8.1e %8.1e' % (test1, test2)
-        print(''.join([str1, str2, str3]))
+    # if show:
+    #     print(' ')
+    #     print(hdg1, hdg2)
+    #     test1 = 1
+    #     test2 = alpha / beta
+    #     str1 = '%6g %12.5e' % (0, x[0])
+    #     str2 = ' %10.3e %10.3e' % (normr, normar)
+    #     str3 = '  %8.1e %8.1e' % (test1, test2)
+    #     print(''.join([str1, str2, str3]))
 
     # Main iteration loop.
-    while True:
-        itn.add_(1)
+    for itn in range(1, maxiter+1):
 
         # Perform the next step of the bidiagonalization to obtain the
         # next  beta, u, alpha, v.  These satisfy the relations
@@ -256,11 +327,6 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         u.mul_(-alpha).add_(A.matvec(v))
         beta = u.norm()
 
-        # beta_pos = beta > 0
-        # u = torch.where(beta_pos, u / beta, u)
-        # v = torch.where(beta_pos, -v*beta + A.rmatvec(u), v)
-        # alpha = torch.where(beta_pos, v.norm(), alpha)
-        # v = torch.where(beta_pos & (alpha > 0), v / alpha, v)
         if beta > 0:
             u.div_(beta)
             v.mul_(-beta).add_(A.rmatvec(u))
@@ -270,133 +336,45 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
 
-        # Construct rotation Qhat_{k,2k+1}.
-
-        chat, shat, alphahat = _sym_ortho(alphabar, damp)
-
-        # Use a plane rotation (Q_i) to turn B_i to R_i
-
-        rhoold = rho.clone()
-        c, s, rho = _sym_ortho(alphahat, beta)
-        thetanew = s*alpha
-        alphabar = c*alpha
-
-        # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
-
-        rhobarold = rhobar.clone()
-        zetaold = zeta.clone()
-        thetabar = sbar * rho
-        rhotemp = cbar * rho
-        cbar, sbar, rhobar = _sym_ortho(cbar * rho, thetanew)
-        zeta = torch.mul(cbar, zetabar, out=zeta)
-        zetabar.mul_(-sbar)
-
-        # Update h, h_hat, x.
-
-        hbar.mul_(-thetabar * rho).div_(rhoold * rhobarold)
-        hbar.add_(h)
-        x.addcdiv_(zeta * hbar, rho * rhobar)
-        h.mul_(-thetanew).div_(rho)
-        h.add_(v)
-
-        # Estimate of ||r||.
-
-        # Apply rotation Qhat_{k,2k+1}.
-        betaacute = chat * betadd
-        betacheck = -shat * betadd
-
-        # Apply rotation Q_{k,k+1}.
-        betahat = c * betaacute
-        betadd = -s * betaacute
-
-        # Apply rotation Qtilde_{k-1}.
-        # betad = betad_{k-1} here.
-
-        thetatildeold = thetatilde.clone()
-        ctildeold, stildeold, rhotildeold = _sym_ortho(rhodold, thetabar)
-        thetatilde = torch.mul(stildeold, rhobar, out=thetatilde)
-        rhodold = torch.mul(ctildeold, rhobar, out=rhodold)
-        betad.mul_(-stildeold).addcmul_(ctildeold, betahat)
-
-        # betad   = betad_k here.
-        # rhodold = rhod_k  here.
-
-        tautildeold.mul_(-thetatildeold).add_(zetaold).div_(rhotildeold)
-        taud = (zeta - thetatilde * tautildeold) / rhodold
-        d.addcmul_(betacheck, betacheck)
-        normr = torch.sqrt(d + (betad - taud).square() + betadd.square(), out=normr)
-
-        # Estimate ||A||.
-        normA2.addcmul_(beta, beta)
-        normA = torch.sqrt(normA2, out=normA)
-        normA2.addcmul_(alpha, alpha)
-
-        # Estimate cond(A).
-        maxrbar = torch.max(maxrbar, rhobarold, out=maxrbar)
-        minrbar = torch.where(itn > 1, torch.min(minrbar, rhobarold), minrbar)
-        condA = torch.max(maxrbar, rhotemp) / torch.min(minrbar, rhotemp)
-
-        # Test for convergence.
-
-        # Compute norms for convergence testing.
-        normar = torch.abs(zetabar, out=normar)
-        normx = torch.norm(x, out=normx)
-
-        # Now use these norms to estimate certain other quantities,
-        # some of which will be small near a solution.
-
-        test1 = normr / normb
-        test2 = (normar / (normA * normr)).masked_fill((normA * normr) == 0, float('inf'))
-        test3 = 1 / condA
-        t1 = test1 / (1 + normA * normx / normb)
-        rtol = btol + atol * normA * normx / normb
-
-        # The following tests guard against extremely small values of
-        # atol, btol or ctol.  (The user may have set any or all of
-        # the parameters atol, btol, conlim  to 0.)
-        # The effect is equivalent to the normAl tests using
-        # atol = eps,  btol = eps,  conlim = 1/eps.
-
-        stop = ((itn >= maxiter) | (1 + test3 <= 1) | (1 + test2 <= 1) |
-                (1 + t1 <= 1))
-
-        # Allow for tolerances set by the user.
-
-        stop = (stop | (test3 <= ctol) | (test2 <= atol) | (test1 <= rtol) |
-                (itn >= maxiter))
+        stop, rho, cbar, sbar, rhobar, betad = \
+            inner_step(
+                x, h, v, d, alpha, beta, zeta, rho, rhodold, thetatilde, tautildeold,
+                hbar, alphabar, zetabar, rhobar, cbar, sbar, betad, betadd, normA,
+                normA2, normb, normr, normar, normx, minrbar, maxrbar,
+                damp, atol, btol, ctol, itn)
 
         # See if it is time to print something.
 
-        if show:
-            if (n <= 40) or (itn <= 10) or (itn >= maxiter - 10) or \
-               (itn % 10 == 0) or (test3 <= 1.1 * ctol) or \
-               (test2 <= 1.1 * atol) or (test1 <= 1.1 * rtol) or \
-                stop:
-
-                if pcount >= pfreq:
-                    pcount = 0
-                    print(' ')
-                    print(hdg1, hdg2)
-                pcount = pcount + 1
-                str1 = '%6g %12.5e' % (itn, x[0])
-                str2 = ' %10.3e %10.3e' % (normr, normar)
-                str3 = '  %8.1e %8.1e' % (test1, test2)
-                str4 = ' %8.1e %8.1e' % (normA, condA)
-                print(''.join([str1, str2, str3, str4]))
+        # if show:
+        #     if (n <= 40) or (itn <= 10) or (itn >= maxiter - 10) or \
+        #        (itn % 10 == 0) or (test3 <= 1.1 * ctol) or \
+        #        (test2 <= 1.1 * atol) or (test1 <= 1.1 * rtol) or \
+        #         stop:
+        #
+        #         if pcount >= pfreq:
+        #             pcount = 0
+        #             print(' ')
+        #             print(hdg1, hdg2)
+        #         pcount = pcount + 1
+        #         str1 = '%6g %12.5e' % (itn, x[0])
+        #         str2 = ' %10.3e %10.3e' % (normr, normar)
+        #         str3 = '  %8.1e %8.1e' % (test1, test2)
+        #         str4 = ' %8.1e %8.1e' % (normA, condA)
+        #         print(''.join([str1, str2, str3, str4]))
 
         if stop:
             break
 
     # Print the stopping condition.
 
-    if show:
-        print(' ')
-        print('LSMR finished')
-        print('               normr =%8.1e' % normr)
-        print('    normA =%8.1e    normAr =%8.1e' % (normA, normar))
-        print('itn   =%8g    condA =%8.1e' % (itn, condA))
-        print('    normx =%8.1e' % (normx))
-        print(str1, str2)
-        print(str3, str4)
+    # if show:
+    #     print(' ')
+    #     print('LSMR finished')
+    #     print('               normr =%8.1e' % normr)
+    #     print('    normA =%8.1e    normAr =%8.1e' % (normA, normar))
+    #     print('itn   =%8g    condA =%8.1e' % (itn, condA))
+    #     print('    normx =%8.1e' % (normx))
+    #     print(str1, str2)
+    #     print(str3, str4)
 
     return x, itn, normr, normar, normA, condA, normx
