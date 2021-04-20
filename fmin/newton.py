@@ -286,6 +286,8 @@ def fmin_newton_exact(
         of the following:
             'grad' : use steepest descent direction (gradient)
             'lu' : solve the inverse hessian with LU factorization
+            'eig' : use symmetric eigendecomposition to determine a
+                    diagonal regularization parameter
     callback : callable, optional
         Function to call after each iteration with the current parameter
         state, e.g. callback(x_k)
@@ -375,6 +377,12 @@ def fmin_newton_exact(
                                        grad.neg().unsqueeze(1)).squeeze(1)
             elif handle_npd == 'grad':
                 d = grad.neg()
+            elif handle_npd == 'eig':
+                eig, V = torch.linalg.eigh(hess)
+                tau = torch.clamp(-1.5 * eig[0], 1e-3, None)
+                eig.add_(tau)
+                grad.add_(x, alpha=tau)
+                d = - V.mv(V.t().mv(grad) / eig)
             else:
                 raise RuntimeError('invalid handle_npd encountered.')
 
