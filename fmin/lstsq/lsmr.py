@@ -187,6 +187,10 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
     rhobarold = b.new_tensor(0)
     zetaold = b.new_tensor(0)
     thetatildeold = b.new_tensor(0)
+    betaacute = b.new_tensor(0)
+    betahat = b.new_tensor(0)
+    betacheck = b.new_tensor(0)
+    taud = b.new_tensor(0)
 
 
     # Main iteration loop.
@@ -238,11 +242,11 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         # Estimate of ||r||.
 
         # Apply rotation Qhat_{k,2k+1}.
-        betaacute = chat * betadd
-        betacheck = -shat * betadd
+        torch.mul(chat, betadd, out=betaacute)
+        torch.mul(-shat, betadd, out=betacheck)
 
         # Apply rotation Q_{k,k+1}.
-        betahat = c * betaacute
+        torch.mul(c, betaacute, out=betahat)
         torch.mul(-s, betaacute, out=betadd)
 
         # Apply rotation Qtilde_{k-1}.
@@ -258,7 +262,7 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         # rhodold = rhod_k  here.
 
         tautildeold.mul_(-thetatildeold).add_(zetaold).div_(rhotildeold)
-        taud = (zeta - thetatilde * tautildeold) / rhodold
+        torch.div(zeta - thetatilde * tautildeold, rhodold, out=taud)
         d.addcmul_(betacheck, betacheck)
         torch.sqrt(d + (betad - taud).square() + betadd.square(), out=normr)
 
