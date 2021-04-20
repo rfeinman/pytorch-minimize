@@ -135,14 +135,11 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         u.sub_(A.matvec(x))
         beta = u.norm()
 
-    if beta > 0:
-        u.div_(beta)
-        v = A.rmatvec(u)
-        alpha = v.norm()
-        v = torch.where(alpha > 0, v / alpha, v)
-    else:
-        v = b.new_zeros(n)
-        alpha = b.new_tensor(0)
+    #if beta > 0:
+    u.div_(beta)
+    v = A.rmatvec(u)
+    alpha = v.norm()
+    v = torch.where(alpha > 0, v / alpha, v)
 
     # Initialize variables for 1st iteration.
 
@@ -186,6 +183,10 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
     ctildeold = b.new_tensor(0)
     stildeold = b.new_tensor(0)
     rhotildeold = b.new_tensor(0)
+    rhoold = b.new_tensor(0)
+    rhobarold = b.new_tensor(0)
+    zetaold = b.new_tensor(0)
+    thetatildeold = b.new_tensor(0)
 
 
     # Main iteration loop.
@@ -211,15 +212,15 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
 
         # Use a plane rotation (Q_i) to turn B_i to R_i
 
-        rhoold = rho.clone()
+        rhoold.copy_(rho, non_blocking=True)
         _sym_ortho(alphahat, beta, out=(c, s, rho))
         thetanew = torch.mul(s, alpha)
         torch.mul(c, alpha, out=alphabar)
 
         # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
 
-        rhobarold = rhobar.clone()
-        zetaold = zeta.clone()
+        rhobarold.copy_(rhobar, non_blocking=True)
+        zetaold.copy_(zeta, non_blocking=True)
         thetabar = sbar * rho
         rhotemp = cbar * rho
         _sym_ortho(cbar * rho, thetanew, out=(cbar, sbar, rhobar))
@@ -247,10 +248,10 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         # Apply rotation Qtilde_{k-1}.
         # betad = betad_{k-1} here.
 
-        thetatildeold = thetatilde.clone()
+        thetatildeold.copy_(thetatilde, non_blocking=True)
         _sym_ortho(rhodold, thetabar, out=(ctildeold, stildeold, rhotildeold))
-        thetatilde = torch.mul(stildeold, rhobar, out=thetatilde)
-        rhodold = torch.mul(ctildeold, rhobar, out=rhodold)
+        torch.mul(stildeold, rhobar, out=thetatilde)
+        torch.mul(ctildeold, rhobar, out=rhodold)
         betad.mul_(-stildeold).addcmul_(ctildeold, betahat)
 
         # betad   = betad_k here.
