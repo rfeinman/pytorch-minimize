@@ -6,6 +6,7 @@ from scipy.optimize import OptimizeResult
 from scipy.optimize._lsq.common import (print_header_nonlinear,
                                         print_iteration_nonlinear)
 
+from .cg import cgls
 from .lsmr import lsmr
 from .linear_operator import jacobian_linop, jacobian_dense
 from .common import (right_multiplied_operator, build_quadratic_1d,
@@ -35,7 +36,7 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
         max_nfev = x0.numel() * 100
     if tr_options is None:
         tr_options = {}
-    assert tr_solver in ['exact', 'lsmr']
+    assert tr_solver in ['exact', 'lsmr', 'cgls']
     if tr_solver == 'exact':
         jacobian = jacobian_dense
     else:
@@ -59,7 +60,7 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
     if Delta == 0:
         Delta.fill_(1.)
 
-    if tr_solver == 'lsmr':
+    if tr_solver != 'exact':
         damp = tr_options.pop('damp', 0.0)
         regularize = tr_options.pop('regularize', True)
         reg_term = 0.
@@ -93,7 +94,7 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
             U, s, V = torch.linalg.svd(J_h, full_matrices=False)
             V = V.T
             uf = U.T.mv(f)
-        elif tr_solver == 'lsmr':
+        else:
             J_h = right_multiplied_operator(J, d)
 
             if regularize:
@@ -103,26 +104,27 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
                 reg_term = -ag_value / Delta**2
 
             damp_full = (damp**2 + reg_term)**0.5
-            gn_h = lsmr(J_h, f, damp=damp_full, **tr_options)[0]
+            if tr_solver == 'lsmr':
+                gn_h = lsmr(J_h, f, damp=damp_full, **tr_options)[0]
+            elif tr_solver == 'cgls':
+                gn_h = cgls(J_h, f, alpha=damp_full, max_iter=min(m,n), **tr_options)
+            else:
+                raise RuntimeError
             S = torch.vstack((g_h, gn_h)).T  # [n,2]
             # Dispatch qr to CPU so long as pytorch/pytorch#22573 is not fixed
             S = torch.linalg.qr(S.cpu(), mode='reduced')[0].to(S.device)  # [n,2]
             JS = J_h.matmul(S)  # [m,2]
             B_S = JS.T.matmul(JS)  # [2,2]
             g_S = S.T.mv(g_h)  # [2]
-        else:
-            raise Exception
 
         actual_reduction = -1
         while actual_reduction <= 0 and nfev < max_nfev:
             if tr_solver == 'exact':
                 step_h, alpha, n_iter = solve_lsq_trust_region(
                     n, m, uf, s, V, Delta, initial_alpha=alpha)
-            elif tr_solver == 'lsmr':
+            else:
                 p_S, _ = solve_trust_region_2d(B_S, g_S, Delta)
                 step_h = S.matmul(p_S)
-            else:
-                raise Exception
 
             predicted_reduction = -evaluate_quadratic(J_h, g_h, step_h)
             step = d * step_h

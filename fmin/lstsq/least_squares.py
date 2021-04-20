@@ -232,8 +232,8 @@ def least_squares(
     if method not in ['trf', 'dogbox']:
         raise ValueError("`method` must be 'trf' or 'dogbox'.")
 
-    if tr_solver not in [None, 'exact', 'lsmr']:
-        raise ValueError("`tr_solver` must be None, 'exact' or 'lsmr'.")
+    if tr_solver not in ['exact', 'lsmr', 'cgls']:
+        raise ValueError("`tr_solver` must be one of {'exact', 'lsmr', 'cgls'}.")
 
     if verbose not in [0, 1, 2]:
         raise ValueError("`verbose` must be in [0, 1, 2].")
