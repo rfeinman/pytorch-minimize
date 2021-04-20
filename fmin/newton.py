@@ -380,8 +380,9 @@ def fmin_newton_exact(
             elif handle_npd == 'grad':
                 d = grad.neg()
             elif handle_npd == 'eig':
+                # this setting is experimental! use with caution
                 eig, V = torch.linalg.eigh(hess)
-                tau = torch.clamp(-1.5 * eig[0], 1e-3, None)
+                tau = torch.clamp(-1.5 * eig[0], min=1e-3)
                 eig.add_(tau)
                 grad.add_(x, alpha=tau)
                 d = - V.mv(V.t().mv(grad) / eig)
