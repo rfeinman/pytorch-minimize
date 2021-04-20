@@ -255,36 +255,38 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         torch.max(maxrbar, rhobarold, out=maxrbar)
         if itn > 1:
             torch.min(minrbar, rhobarold, out=minrbar)
-        torch.div(torch.max(maxrbar, rhotemp), torch.min(minrbar, rhotemp), out=condA)
 
 
         # ------- Test for convergence --------
 
-        # Compute norms for convergence testing.
-        torch.abs(zetabar, out=normar)
-        torch.norm(x, out=normx)
+        if itn % 10 == 0:
 
+            # Compute norms for convergence testing.
+            torch.abs(zetabar, out=normar)
+            torch.norm(x, out=normx)
+            torch.div(torch.max(maxrbar, rhotemp), torch.min(minrbar, rhotemp),
+                      out=condA)
 
-        # Now use these norms to estimate certain other quantities,
-        # some of which will be small near a solution.
-        test1 = normr / normb
-        test2 = normar / (normA * normr + eps)
-        test3 = 1 / (condA + eps)
-        t1 = test1 / (1 + normA * normx / normb)
-        rtol = btol + atol * normA * normx / normb
+            # Now use these norms to estimate certain other quantities,
+            # some of which will be small near a solution.
+            test1 = normr / normb
+            test2 = normar / (normA * normr + eps)
+            test3 = 1 / (condA + eps)
+            t1 = test1 / (1 + normA * normx / normb)
+            rtol = btol + atol * normA * normx / normb
 
-        # The first 3 tests guard against extremely small values of
-        # atol, btol or ctol.  (The user may have set any or all of
-        # the parameters atol, btol, conlim  to 0.)
-        # The effect is equivalent to the normAl tests using
-        # atol = eps,  btol = eps,  conlim = 1/eps.
+            # The first 3 tests guard against extremely small values of
+            # atol, btol or ctol.  (The user may have set any or all of
+            # the parameters atol, btol, conlim  to 0.)
+            # The effect is equivalent to the normAl tests using
+            # atol = eps,  btol = eps,  conlim = 1/eps.
 
-        # The second 3 tests allow for tolerances set by the user.
+            # The second 3 tests allow for tolerances set by the user.
 
-        stop = ((1 + test3 <= 1) | (1 + test2 <= 1) | (1 + t1 <= 1)
-                | (test3 <= ctol) | (test2 <= atol) | (test1 <= rtol))
+            stop = ((1 + test3 <= 1) | (1 + test2 <= 1) | (1 + t1 <= 1)
+                    | (test3 <= ctol) | (test2 <= atol) | (test1 <= rtol))
 
-        if stop:
-            break
+            if stop:
+                break
 
     return x, itn
