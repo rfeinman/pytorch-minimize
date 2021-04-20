@@ -14,18 +14,20 @@ def cg(A, b, x0=None, max_iter=None, tol=1e-5):
         r = b - A.mv(x)
     p = r.clone()
     rs = r.dot(r)
+    rs_new = b.new_tensor(0.)
+    alpha = b.new_tensor(0.)
     for n_iter in range(1, max_iter+1):
         Ap = A.mv(p)
-        alpha = rs / p.dot(Ap)
+        torch.div(rs, p.dot(Ap), out=alpha)
         x.add_(p, alpha=alpha)
         r.sub_(Ap, alpha=alpha)
-        rs_new = r.dot(r)
+        torch.dot(r, r, out=rs_new)
         p.mul_(rs_new / rs).add_(r)
         if n_iter % 10 == 0:
             r_norm = rs.sqrt()
             if r_norm < tol:
                 break
-        rs = rs_new
+        rs.copy_(rs_new)
 
     return x
 
