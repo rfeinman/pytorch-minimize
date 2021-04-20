@@ -384,7 +384,7 @@ def fmin_newton_exact(
                 eig, V = torch.linalg.eigh(hess)
                 tau = torch.clamp(-1.5 * eig[0], min=1e-3)
                 eig.add_(tau)
-                grad.add_(x, alpha=tau)
+                #grad.add_(x, alpha=tau)
                 d = - V.mv(V.t().mv(grad) / eig)
             else:
                 raise RuntimeError('invalid handle_npd encountered.')
