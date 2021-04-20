@@ -370,7 +370,9 @@ def fmin_newton_exact(
         try:
             d = torch.cholesky_solve(grad.neg().unsqueeze(1),
                                      torch.linalg.cholesky(hess)).squeeze(1)
+            chol_fail = False
         except:
+            chol_fail = True
             nfail += 1
             if handle_npd == 'lu':
                 d = torch.linalg.solve(hess,
@@ -413,7 +415,7 @@ def fmin_newton_exact(
         nfev += 1
 
         if disp > 1:
-            print('iter %3d - fval: %0.4f' % (n_iter, fval))
+            print('iter %3d - fval: %0.4f - chol_fail: %r' % (n_iter, fval, chol_fail))
         if callback is not None:
             callback(x)
         if return_all:
