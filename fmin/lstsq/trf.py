@@ -61,8 +61,8 @@ def trf_no_bounds(fun, x0, f0=None, ftol=1e-8, xtol=1e-8, gtol=1e-8,
         Delta.fill_(1.)
 
     if tr_solver != 'exact':
-        damp = tr_options.pop('damp', 0.0)
-        regularize = tr_options.pop('regularize', True)
+        damp = tr_options.pop('damp', 1e-4)
+        regularize = tr_options.pop('regularize', False)
         reg_term = 0.
 
     alpha = x0.new_tensor(0.)  # "Levenberg-Marquardt" parameter
