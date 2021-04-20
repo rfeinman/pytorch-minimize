@@ -39,86 +39,8 @@ def _sym_ortho(a, b) -> Tuple[Tensor, Tensor, Tensor]:
     return c, s, r
 
 
-@torch.jit.script
-def inner_step(
-        x, h, v, d, alpha, beta, zeta, rho, rhodold, thetatilde, tautildeold,
-        hbar, alphabar, zetabar, rhobar, cbar, sbar, betad, betadd, normA,
-        normA2, normr, minrbar, maxrbar, damp, condA, itn: int
-) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-
-    # Construct rotation Qhat_{k,2k+1}.
-
-    chat, shat, alphahat = _sym_ortho(alphabar, damp)
-
-    # Use a plane rotation (Q_i) to turn B_i to R_i
-
-    rhoold = rho.clone()
-    c, s, rho = _sym_ortho(alphahat, beta)
-    thetanew = s*alpha
-    alphabar.copy_(c*alpha)
-
-    # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
-
-    rhobarold = rhobar.clone()
-    zetaold = zeta.clone()
-    thetabar = sbar * rho
-    rhotemp = cbar * rho
-    cbar, sbar, rhobar = _sym_ortho(cbar * rho, thetanew)
-    torch.mul(cbar, zetabar, out=zeta)
-    zetabar.mul_(-sbar)
-
-    # Update h, h_hat, x.
-
-    hbar.mul_(-thetabar * rho).div_(rhoold * rhobarold)
-    hbar.add_(h)
-    x.addcdiv_(zeta * hbar, rho * rhobar)
-    h.mul_(-thetanew).div_(rho)
-    h.add_(v)
-
-    # Estimate of ||r||.
-
-    # Apply rotation Qhat_{k,2k+1}.
-    betaacute = chat * betadd
-    betacheck = -shat * betadd
-
-    # Apply rotation Q_{k,k+1}.
-    betahat = c * betaacute
-    betadd.copy_(-s * betaacute)
-
-    # Apply rotation Qtilde_{k-1}.
-    # betad = betad_{k-1} here.
-
-    thetatildeold = thetatilde.clone()
-    ctildeold, stildeold, rhotildeold = _sym_ortho(rhodold, thetabar)
-    thetatilde = torch.mul(stildeold, rhobar, out=thetatilde)
-    rhodold = torch.mul(ctildeold, rhobar, out=rhodold)
-    betad.mul_(-stildeold).addcmul_(ctildeold, betahat)
-
-    # betad   = betad_k here.
-    # rhodold = rhod_k  here.
-
-    tautildeold.mul_(-thetatildeold).add_(zetaold).div_(rhotildeold)
-    taud = (zeta - thetatilde * tautildeold) / rhodold
-    d.addcmul_(betacheck, betacheck)
-    torch.sqrt(d + (betad - taud).square() + betadd.square(), out=normr)
-
-    # Estimate ||A||.
-    normA2.addcmul_(beta, beta)
-    torch.sqrt(normA2, out=normA)
-    normA2.addcmul_(alpha, alpha)
-
-    # Estimate cond(A).
-    torch.max(maxrbar, rhobarold, out=maxrbar)
-    if itn > 1:
-        torch.min(minrbar, rhobarold, out=minrbar)
-    torch.div(torch.max(maxrbar, rhotemp), torch.min(minrbar, rhotemp), out=condA)
-
-    return rho, cbar, sbar, rhobar, betad
-
-
 @torch.no_grad()
-def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
-         maxiter=None, x0=None):
+def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None):
     """Iterative solver for least-squares problems.
 
     lsmr solves the system of linear equations ``Ax = b``. If the system
@@ -270,11 +192,70 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
 
-        rho, cbar, sbar, rhobar, betad = \
-            inner_step(
-                x, h, v, d, alpha, beta, zeta, rho, rhodold, thetatilde, tautildeold,
-                hbar, alphabar, zetabar, rhobar, cbar, sbar, betad, betadd, normA,
-                normA2, normr, minrbar, maxrbar, damp, condA, itn)
+        chat, shat, alphahat = _sym_ortho(alphabar, damp)
+
+        # Use a plane rotation (Q_i) to turn B_i to R_i
+
+        rhoold = rho.clone()
+        c, s, rho = _sym_ortho(alphahat, beta)
+        thetanew = torch.mul(s, alpha)
+        torch.mul(c, alpha, out=alphabar)
+
+        # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
+
+        rhobarold = rhobar.clone()
+        zetaold = zeta.clone()
+        thetabar = sbar * rho
+        rhotemp = cbar * rho
+        cbar, sbar, rhobar = _sym_ortho(cbar * rho, thetanew)
+        torch.mul(cbar, zetabar, out=zeta)
+        zetabar.mul_(-sbar)
+
+        # Update h, h_hat, x.
+
+        hbar.mul_(-thetabar * rho).div_(rhoold * rhobarold)
+        hbar.add_(h)
+        x.addcdiv_(zeta * hbar, rho * rhobar)
+        h.mul_(-thetanew).div_(rho)
+        h.add_(v)
+
+        # Estimate of ||r||.
+
+        # Apply rotation Qhat_{k,2k+1}.
+        betaacute = chat * betadd
+        betacheck = -shat * betadd
+
+        # Apply rotation Q_{k,k+1}.
+        betahat = c * betaacute
+        torch.mul(-s, betaacute, out=betadd)
+
+        # Apply rotation Qtilde_{k-1}.
+        # betad = betad_{k-1} here.
+
+        thetatildeold = thetatilde.clone()
+        ctildeold, stildeold, rhotildeold = _sym_ortho(rhodold, thetabar)
+        thetatilde = torch.mul(stildeold, rhobar, out=thetatilde)
+        rhodold = torch.mul(ctildeold, rhobar, out=rhodold)
+        betad.mul_(-stildeold).addcmul_(ctildeold, betahat)
+
+        # betad   = betad_k here.
+        # rhodold = rhod_k  here.
+
+        tautildeold.mul_(-thetatildeold).add_(zetaold).div_(rhotildeold)
+        taud = (zeta - thetatilde * tautildeold) / rhodold
+        d.addcmul_(betacheck, betacheck)
+        torch.sqrt(d + (betad - taud).square() + betadd.square(), out=normr)
+
+        # Estimate ||A||.
+        normA2.addcmul_(beta, beta)
+        torch.sqrt(normA2, out=normA)
+        normA2.addcmul_(alpha, alpha)
+
+        # Estimate cond(A).
+        torch.max(maxrbar, rhobarold, out=maxrbar)
+        if itn > 1:
+            torch.min(minrbar, rhobarold, out=minrbar)
+        torch.div(torch.max(maxrbar, rhotemp), torch.min(minrbar, rhotemp), out=condA)
 
 
         # ------- Test for convergence --------
