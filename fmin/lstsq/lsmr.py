@@ -31,12 +31,19 @@ from .linear_operator import aslinearoperator
 #     return c, s, r
 
 
-@torch.jit.script
-def _sym_ortho(a, b) -> Tuple[Tensor, Tensor, Tensor]:
-    r = torch.sqrt(a**2 + b**2)
-    c = a / r
-    s = b / r
-    return c, s, r
+# @torch.jit.script
+# def _sym_ortho(a, b) -> Tuple[Tensor, Tensor, Tensor]:
+#     r = torch.sqrt(a**2 + b**2)
+#     c = a / r
+#     s = b / r
+#     return c, s, r
+
+
+def _sym_ortho(a, b, out):
+    torch.sqrt(a**2 + b**2, out=out[2])
+    torch.div(a, out[2], out=out[0])
+    torch.div(b, out[2], out=out[1])
+    return out
 
 
 @torch.no_grad()
@@ -113,10 +120,10 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         b = b.squeeze()
     eps = torch.finfo(b.dtype).eps
     damp = torch.as_tensor(damp, dtype=b.dtype, device=b.device)
+    ctol = 1 / conlim if conlim > 0 else 0.
     m, n = A.shape
-    minDim = min(m, n)
     if maxiter is None:
-        maxiter = minDim
+        maxiter = min(m, n)
 
     u = b.clone()
     normb = b.norm()
@@ -168,10 +175,18 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
     condA = b.new_tensor(1)
     normx = b.new_tensor(0)
     normar = b.new_tensor(0)
+    normr = b.new_tensor(0)
 
-    # Items for use in stopping rules, normb set earlier
-    ctol = 1 / conlim if conlim > 0 else 0.
-    normr = beta.clone()
+    # extra buffers (added by Reuben)
+    c = b.new_tensor(0)
+    s = b.new_tensor(0)
+    chat = b.new_tensor(0)
+    shat = b.new_tensor(0)
+    alphahat = b.new_tensor(0)
+    ctildeold = b.new_tensor(0)
+    stildeold = b.new_tensor(0)
+    rhotildeold = b.new_tensor(0)
+
 
     # Main iteration loop.
     for itn in range(1, maxiter+1):
@@ -192,12 +207,12 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
 
-        chat, shat, alphahat = _sym_ortho(alphabar, damp)
+        _sym_ortho(alphabar, damp, out=(chat, shat, alphahat))
 
         # Use a plane rotation (Q_i) to turn B_i to R_i
 
         rhoold = rho.clone()
-        c, s, rho = _sym_ortho(alphahat, beta)
+        _sym_ortho(alphahat, beta, out=(c, s, rho))
         thetanew = torch.mul(s, alpha)
         torch.mul(c, alpha, out=alphabar)
 
@@ -207,7 +222,7 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         zetaold = zeta.clone()
         thetabar = sbar * rho
         rhotemp = cbar * rho
-        cbar, sbar, rhobar = _sym_ortho(cbar * rho, thetanew)
+        _sym_ortho(cbar * rho, thetanew, out=(cbar, sbar, rhobar))
         torch.mul(cbar, zetabar, out=zeta)
         zetabar.mul_(-sbar)
 
@@ -233,7 +248,7 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         # betad = betad_{k-1} here.
 
         thetatildeold = thetatilde.clone()
-        ctildeold, stildeold, rhotildeold = _sym_ortho(rhodold, thetabar)
+        _sym_ortho(rhodold, thetabar, out=(ctildeold, stildeold, rhotildeold))
         thetatilde = torch.mul(stildeold, rhobar, out=thetatilde)
         rhodold = torch.mul(ctildeold, rhobar, out=rhodold)
         betad.mul_(-stildeold).addcmul_(ctildeold, betahat)
