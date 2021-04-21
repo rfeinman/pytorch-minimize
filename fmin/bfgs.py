@@ -187,6 +187,7 @@ def fmin_bfgs(
         hess = BFGS(x, inv_hess)
     d = grad.neg()
     t = min(1., grad.norm(p=1).reciprocal()) * lr
+    n_iter = 0
 
     # termination func
     def terminate(warnflag, msg):
