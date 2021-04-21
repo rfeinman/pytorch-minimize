@@ -27,7 +27,7 @@ def cg(A, b, x0=None, max_iter=None, tol=1e-5):
             r_norm = rs.sqrt()
             if r_norm < tol:
                 break
-        rs.copy_(rs_new)
+        rs.copy_(rs_new, non_blocking=True)
 
     return x
 
