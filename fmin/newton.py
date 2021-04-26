@@ -375,8 +375,7 @@ def fmin_newton_exact(
             chol_fail = True
             nfail += 1
             if handle_npd == 'lu':
-                d = torch.linalg.solve(hess,
-                                       grad.neg().unsqueeze(1)).squeeze(1)
+                d = torch.linalg.solve(hess, grad.neg())
             elif handle_npd == 'grad':
                 d = grad.neg()
             elif handle_npd == 'eig':
