@@ -20,6 +20,10 @@ def rosen(x):
 # initial point
 x0 = torch.tensor([1., 8.])
 
+# Select from the following methods:
+#  ['bfgs', 'l-bfgs', 'newton-cg', 'newton-exact', 
+#   'trust-ncg', 'trust-exact', 'dogleg']
+
 # BFGS
 result = minimize(rosen, x0, method='bfgs')
 
@@ -30,7 +34,7 @@ result = minimize(rosen, x0, method='newton-cg')
 result = minimize(rosen, x0, method='newton-exact')
 ```
 
-__Solvers:__ BFGS, L-BFGS, Newton Conjugate Gradient (CG), Newton Exact
+__Solvers:__ BFGS, L-BFGS, Newton Conjugate Gradient (NCG), Newton Exact, Dogleg, Trust-Region Exact, Trust-Region NCG
 
 __Examples:__ See the [Rosenbrock minimization notebook](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/rosen_minimize.ipynb) for a demonstration of function minimization with a handful of different algorithms.
 
@@ -59,9 +63,15 @@ The following solvers are available for _unconstrained_ minimization:
 
 - __BFGS/L-BFGS.__ BFGS is a cannonical quasi-Newton method for unconstrained optimization. I've implemented both the standard BFGS and the "limited memory" L-BFGS. For smaller scale problems where memory is not a concern, BFGS should be significantly faster than L-BFGS (especially on CUDA) since it avoids Python for loops and instead uses pure torch.
    
-- __Newton Conjugate Gradient (CG).__ The Newton-Raphson method is a staple of unconstrained optimization. Although computing full Hessian matrices with PyTorch's reverse-mode automatic differentiation can be costly, computing Hessian-vector products is cheap, and it also saves a lot of memory. The Conjugate Gradient (CG) variant of Newton's method is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
+- __Newton Conjugate Gradient (NCG).__ The Newton-Raphson method is a staple of unconstrained optimization. Although computing full Hessian matrices with PyTorch's reverse-mode automatic differentiation can be costly, computing Hessian-vector products is cheap, and it also saves a lot of memory. The Conjugate Gradient (CG) variant of Newton's method is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
 
 - __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
+
+- __Trust-Region Newton Conjugate Gradient (Trust-NCG).__ Summary coming soon.
+
+- __Trust-Region Exact.__ Summary coming soon.
+
+- __Dogleg.__ Summary coming soon.
 
 To access the unconstrained minimizer interface, use the following import statement:
 
