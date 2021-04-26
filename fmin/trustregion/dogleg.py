@@ -13,7 +13,7 @@ from .base import _minimize_trust_region, BaseQuadraticSubproblem
 
 
 def _minimize_dogleg(
-        fun, x0, jac=None, hess=None, **trust_region_options):
+        fun, x0, **trust_region_options):
     """
     Minimization of scalar function of one or more variables using
     the dog-leg trust-region algorithm.
@@ -31,17 +31,14 @@ def _minimize_dogleg(
         Gradient norm must be less than `gtol` before successful
         termination.
     """
-    if jac is None:
-        raise ValueError('Jacobian is required for dogleg minimization')
-    if hess is None:
-        raise ValueError('Hessian is required for dogleg minimization')
-    return _minimize_trust_region(fun, x0, jac=jac, hess=hess,
+    return _minimize_trust_region(fun, x0,
                                   subproblem=DoglegSubproblem,
                                   **trust_region_options)
 
 
 class DoglegSubproblem(BaseQuadraticSubproblem):
     """Quadratic subproblem solved by the dogleg method"""
+    hess_prod = False
 
     def cauchy_point(self):
         """

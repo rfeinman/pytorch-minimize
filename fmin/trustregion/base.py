@@ -8,10 +8,11 @@ All rights reserved.
 """
 from abc import ABC, abstractmethod
 import torch
+import torch.autograd as autograd
+from torch._vmap_internals import _vmap
 from torch.linalg import norm
 from scipy.optimize.optimize import OptimizeResult, _status_message
 
-__all__ = []
 
 status_messages = (
     _status_message['success'],
@@ -25,23 +26,33 @@ class BaseQuadraticSubproblem(ABC):
     """
     Base/abstract class defining the quadratic model for trust-region
     minimization. Child classes must implement the ``solve`` method.
-    Values of the objective function, Jacobian and Hessian (if provided) at
-    the current iterate ``x`` are evaluated on demand and then stored as
-    attributes ``fun``, ``jac``, ``hess``.
     """
-
-    def __init__(self, x, fun, jac, hess=None, hessp=None):
+    def __init__(self, x, fun):
         self._x = x
-        self._f = None
-        self._g = None
-        self._h = None
+
+        # compute function and jacobian value (with grad enabled)
+        x = x.detach().requires_grad_(True)
+        with torch.enable_grad():
+            f = fun(x)
+            g, = autograd.grad(f, x, create_graph=True)
+
+        # build hessp function or compute hessian matrix
+        if self.hess_prod:
+            h = None
+            hessp = lambda v: autograd.grad(g, x, v, retain_graph=True)[0]
+        else:
+            I = torch.eye(x.numel(), dtype=x.dtype, device=x.device)
+            h = _vmap(lambda v: autograd.grad(g, x, v)[0])(I)
+            hessp = None
+
+        self._f = f.detach()
+        self._g = g.detach()
+        self._h = h
+        self._hessp = hessp
         self._g_mag = None
         self._cauchy_point = None
         self._newton_point = None
-        self._fun = fun
-        self._jac = jac
-        self._hess = hess
-        self._hessp = hessp
+
         # buffer for boundaries computation
         self._tab = x.new_empty(2)
 
@@ -51,27 +62,24 @@ class BaseQuadraticSubproblem(ABC):
     @property
     def fun(self):
         """Value of objective function at current iteration."""
-        if self._f is None:
-            self._f = self._fun(self._x)
         return self._f
 
     @property
     def jac(self):
         """Value of Jacobian of objective function at current iteration."""
-        if self._g is None:
-            self._g = self._jac(self._x)
         return self._g
 
     @property
     def hess(self):
         """Value of Hessian of objective function at current iteration."""
-        if self._h is None:
-            self._h = self._hess(self._x)
+        if self.hess_prod:
+            raise Exception('class {} does not have '
+                            'method `hess`'.format(type(self)))
         return self._h
 
     def hessp(self, p):
-        if self._hessp is not None:
-            return self._hessp(self._x, p)
+        if self.hess_prod:
+            return self._hessp(p)
         else:
             return self.hess.mv(p)
 
@@ -102,14 +110,19 @@ class BaseQuadraticSubproblem(ABC):
         self._tab[1] = -2*c / aux
         return self._tab.sort()[0]
 
-
     @abstractmethod
     def solve(self, trust_radius):
         pass
 
+    @property
+    @abstractmethod
+    def hess_prod(self):
+        """A property that must be set by every sub-class indicating whether
+        to use full hessian matrix or hessian-vector products."""
+        pass
 
-def _minimize_trust_region(fun, x0, jac=None, hess=None, hessp=None,
-                           subproblem=None, initial_trust_radius=1.,
+
+def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
                            max_trust_radius=1000., eta=0.15, gtol=1e-4,
                            maxiter=None, disp=False, return_all=False,
                            callback=None):
@@ -135,13 +148,6 @@ def _minimize_trust_region(fun, x0, jac=None, hess=None, hessp=None,
     This function is called by the `minimize` function.
     It is not supposed to be called directly.
     """
-
-    if jac is None:
-        raise ValueError('Jacobian is currently required for trust-region '
-                         'methods')
-    if hess is None and hessp is None:
-        raise ValueError('Either the Hessian or the Hessian-vector product '
-                         'is currently required for trust-region methods')
     if subproblem is None:
         raise ValueError('A subproblem solving strategy is required for '
                          'trust-region methods')
@@ -163,8 +169,8 @@ def _minimize_trust_region(fun, x0, jac=None, hess=None, hessp=None,
         maxiter = x0.numel() * 200
 
     # init the search status
-    #warnflag = 0
-    #k = 0
+    warnflag = 1  # maximum iterations flag
+    k = 0
 
     # initialize the search
     trust_radius = torch.as_tensor(initial_trust_radius,
@@ -172,11 +178,11 @@ def _minimize_trust_region(fun, x0, jac=None, hess=None, hessp=None,
     x = x0
     if return_all:
         allvecs = [x]
-    m = subproblem(x, fun, jac, hess, hessp)
+    m = subproblem(x, fun)
 
     # search for the function min
     # do not even start if the gradient is small enough
-    for k in range(maxiter):
+    while k < maxiter:
 
         # Solve the sub-problem.
         # This gives us the proposed step relative to the current position
@@ -197,7 +203,7 @@ def _minimize_trust_region(fun, x0, jac=None, hess=None, hessp=None,
 
         # define the local approximation at the proposed point
         x_proposed = x + p
-        m_proposed = subproblem(x_proposed, fun, jac, hess, hessp)
+        m_proposed = subproblem(x_proposed, fun)
 
         # evaluate the ratio defined in equation (4.4)
         actual_reduction = m.fun - m_proposed.fun
@@ -223,17 +229,12 @@ def _minimize_trust_region(fun, x0, jac=None, hess=None, hessp=None,
             allvecs.append(x.clone())
         if callback is not None:
             callback(x.clone())
+        k += 1
 
         # check if the gradient is small enough to stop
         if m.jac_mag < gtol:
-            k += 1
             warnflag = 0
             break
-
-    else:
-        # maximum iterations reached
-        k += 1
-        warnflag = 1
 
     # print some stuff if requested
     if disp:
@@ -252,7 +253,7 @@ def _minimize_trust_region(fun, x0, jac=None, hess=None, hessp=None,
                             # nfev=sf.nfev, njev=sf.ngev, nhev=sf.nhev+nhessp[0],
                             nit=k, message=status_messages[warnflag])
 
-    if hess is not None:
+    if not subproblem.hess_prod:
         result['hess'] = m.hess
 
     if return_all:

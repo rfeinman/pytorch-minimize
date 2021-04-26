@@ -13,8 +13,7 @@ from scipy.linalg import get_lapack_funcs
 from .base import _minimize_trust_region, BaseQuadraticSubproblem
 
 
-def _minimize_trustregion_exact(
-        fun, x0, jac=None, hess=None, **trust_region_options):
+def _minimize_trustregion_exact(fun, x0, **trust_region_options):
     """
     Minimization of scalar function of one or more variables using
     a nearly exact trust-region algorithm.
@@ -32,13 +31,7 @@ def _minimize_trustregion_exact(
         Gradient norm must be less than ``gtol`` before successful
         termination.
     """
-    if jac is None:
-        raise ValueError('Jacobian is required for trust region '
-                         'exact minimization.')
-    if hess is None:
-        raise ValueError('Hessian matrix is required for trust region '
-                         'exact minimization.')
-    return _minimize_trust_region(fun, x0, jac=jac, hess=hess,
+    return _minimize_trust_region(fun, x0,
                                   subproblem=IterativeSubproblem,
                                   **trust_region_options)
 
@@ -136,11 +129,13 @@ def singular_leading_submatrix(A, U, k):
 
 class IterativeSubproblem(BaseQuadraticSubproblem):
     """Quadratic subproblem solved by nearly exact iterative method.
+
     Notes
     -----
     This subproblem solver was based on [1]_, [2]_ and [3]_,
     which implement similar algorithms. The algorithm is basically
     that of [1]_ but ideas from [2]_ and [3]_ were also used.
+
     References
     ----------
     .. [1] A.R. Conn, N.I. Gould, and P.L. Toint, "Trust region methods",
@@ -156,11 +151,11 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
     # in formula 7.3.14 (p. 190) named as "theta".
     # As recommended there it value is fixed in 0.01.
     UPDATE_COEFF = 0.01
+    hess_prod = False
 
-    def __init__(self, x, fun, jac, hess, hessp=None,
-                 k_easy=0.1, k_hard=0.2):
+    def __init__(self, x, fun, k_easy=0.1, k_hard=0.2):
 
-        super().__init__(x, fun, jac, hess)
+        super().__init__(x, fun)
 
         # When the trust-region shrinks in two consecutive
         # calculations (``tr_radius < previous_tr_radius``)
