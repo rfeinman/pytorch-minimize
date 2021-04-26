@@ -124,7 +124,7 @@ class BaseQuadraticSubproblem(ABC):
 
 def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
                            max_trust_radius=1000., eta=0.15, gtol=1e-4,
-                           maxiter=None, disp=False, return_all=False,
+                           max_iter=None, disp=False, return_all=False,
                            callback=None):
     """
     Minimization of scalar function of one or more variables using a
@@ -140,7 +140,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         gtol : float
             Gradient norm must be less than `gtol`
             before successful termination.
-        maxiter : int
+        max_iter : int
             Maximum number of iterations to perform.
         disp : bool
             If True, print convergence message.
@@ -165,8 +165,8 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
     x0 = torch.as_tensor(x0).flatten()
 
     # limit the number of iterations
-    if maxiter is None:
-        maxiter = x0.numel() * 200
+    if max_iter is None:
+        max_iter = x0.numel() * 200
 
     # init the search status
     warnflag = 1  # maximum iterations flag
@@ -182,7 +182,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
 
     # search for the function min
     # do not even start if the gradient is small enough
-    while k < maxiter:
+    while k < max_iter:
 
         # Solve the sub-problem.
         # This gives us the proposed step relative to the current position
