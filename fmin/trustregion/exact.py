@@ -13,7 +13,7 @@ from scipy.linalg import get_lapack_funcs
 from .base import _minimize_trust_region, BaseQuadraticSubproblem
 
 
-def _minimize_trustregion_exact(fun, x0, **trust_region_options):
+def _minimize_trust_exact(fun, x0, **trust_region_options):
     """
     Minimization of scalar function of one or more variables using
     a nearly exact trust-region algorithm.
