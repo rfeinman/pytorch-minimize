@@ -168,6 +168,9 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
     if max_iter is None:
         max_iter = x0.numel() * 200
 
+    # convert disp to int
+    disp = int(disp)
+
     # init the search status
     warnflag = 1  # maximum iterations flag
     k = 0
@@ -230,6 +233,10 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         if callback is not None:
             callback(x.clone())
         k += 1
+
+        # verbosity check
+        if disp > 1:
+            print('iter %d - fval: %0.4f' % (k, m.fun))
 
         # check if the gradient is small enough to stop
         if m.jac_mag < gtol:
