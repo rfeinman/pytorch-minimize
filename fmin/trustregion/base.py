@@ -162,7 +162,13 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
                          'max trust radius')
 
     # force the initial guess into a nice format
-    x0 = torch.as_tensor(x0).flatten()
+    x0 = torch.as_tensor(x0)
+    xshape = x0.shape
+    x0 = x0.flatten()
+
+    # handle batch inputs
+    fun_ = fun
+    fun = lambda x: fun_(x.view(xshape))
 
     # limit the number of iterations
     if max_iter is None:
@@ -255,13 +261,13 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         # print("         Gradient evaluations: %d" % sf.ngev)
         # print("         Hessian evaluations: %d" % (sf.nhev + nhessp[0]))
 
-    result = OptimizeResult(x=x, fun=m.fun, jac=m.jac,
+    result = OptimizeResult(x=x.view(xshape), fun=m.fun, jac=m.jac.view(xshape),
                             success=(warnflag == 0), status=warnflag,
                             # nfev=sf.nfev, njev=sf.ngev, nhev=sf.nhev+nhessp[0],
                             nit=k, message=status_messages[warnflag])
 
     if not subproblem.hess_prod:
-        result['hess'] = m.hess
+        result['hess'] = m.hess.view(*xshape, *xshape)
 
     if return_all:
         result['allvecs'] = allvecs
