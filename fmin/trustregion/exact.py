@@ -177,8 +177,8 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
         self.k_hard = k_hard
 
         # Get Lapack function for cholesky decomposition.
-        # The implemented SciPy wrapper does not return
-        # the incomplete factorization needed by the method.
+        # TODO: Once PyTorch has a cholesky variant that supports
+        # TODO: incomplete factorization we can remove this dependency.
         self.cholesky, = get_lapack_funcs(('potrf',), (self.hess.cpu().numpy(),))
 
         # Get info about Hessian
@@ -238,6 +238,7 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
             if already_factorized:
                 already_factorized = False
             else:
+                # TODO: replace with pytorch cholesky
                 H = self.hess.clone()
                 H.diagonal().add_(lambda_current)
                 U, info = self.cholesky(H.cpu().numpy(),
@@ -296,6 +297,7 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
                     lambda_lb = torch.max(lambda_lb, lambda_current - s_min**2)
 
                     # Compute Cholesky factorization
+                    # TODO: replace with pytorch cholesky
                     H = self.hess.clone()
                     H.diagonal().add_(lambda_new)
                     c, info = self.cholesky(H.cpu().numpy(),
