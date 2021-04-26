@@ -3,12 +3,19 @@ import torch
 
 from .bfgs import fmin_bfgs
 from .newton import fmin_newton_cg, fmin_newton_exact
+from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
+                          _minimize_trust_ncg)
 
 _tolerance_keys = {
+    'l-bfgs': 'gtol',
     'bfgs': 'gtol',
     'newton-cg': 'xtol',
-    'newton-exact': 'xtol'
+    'newton-exact': 'xtol',
+    'dogleg': 'gtol',
+    'trust-ncg': 'gtol',
+    'trust-exact': 'gtol'
 }
+
 
 def minimize(
         f, x0, method, max_iter=None, tol=None, options=None, callback=None,
@@ -53,7 +60,8 @@ def minimize(
     """
     x0 = torch.as_tensor(x0)
     method = method.lower()
-    assert method in ['bfgs', 'l-bfgs', 'newton-cg', 'newton-exact']
+    assert method in ['bfgs', 'l-bfgs', 'newton-cg', 'newton-exact',
+                      'dogleg', 'trust-ncg', 'trust-exact']
     if options is None:
         options = {}
     if tol is not None:
@@ -74,5 +82,11 @@ def minimize(
         return fmin_newton_cg(f, x0, **options)
     elif method == 'newton-exact':
         return fmin_newton_exact(f, x0, **options)
+    elif method == 'dogleg':
+        return _minimize_dogleg(f, x0, **options)
+    elif method == 'trust-ncg':
+        return _minimize_trust_ncg(f, x0, **options)
+    elif method == 'trust-exact':
+        return _minimize_trust_exact(f, x0, **options)
     else:
         raise RuntimeError('invalid method "{}" encountered.'.format(method))
