@@ -67,11 +67,11 @@ The following solvers are available for _unconstrained_ minimization:
 
 - __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
 
-- __Trust-Region Newton Conjugate Gradient (Trust-NCG).__ Summary coming soon.
+- __Trust-Region Newton Conjugate Gradient.__ Description coming soon.
 
-- __Trust-Region Exact.__ Summary coming soon.
+- __Trust-Region Exact.__ Description coming soon.
 
-- __Dogleg.__ Summary coming soon.
+- __Dogleg.__ Description coming soon.
 
 To access the unconstrained minimizer interface, use the following import statement:
 
