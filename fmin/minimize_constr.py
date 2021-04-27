@@ -123,9 +123,62 @@ def _build_bounds(bounds, x0):
 def minimize_constr(
         f, x0, constr=None, bounds=None, max_iter=None, tol=None, callback=None,
         disp=0, **kwargs):
-    """
-    A constrained minimizer for pytorch functions based on scipy's
-    "trust-constr" method.
+    """Minimize a scalar function of one or more variables subject to
+    bounds and/or constraints.
+
+    .. note::
+        This is a wrapper for SciPy's
+        `'trust-constr' <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_
+        method. It uses autograd behind the scenes to build jacobian & hessian
+        callables before invoking scipy. Inputs and objectivs should use
+        PyTorch tensors like other routines. CUDA is supported; however,
+        data will be transferred back-and-forth between GPU/CPU.
+
+    Parameters
+    ----------
+    f : callable
+        Scalar objective function to minimize.
+    x0 : Tensor
+        Initialization point.
+    constr : dict, optional
+        Constraint specifications. Should be a dictionary with the
+        following fields:
+
+            * fun (callable) - Constraint function
+            * lb (Tensor or float, optional) - Constraint lower bounds
+            * ub : (Tensor or float, optional) - Constraint upper bounds
+
+        One of either `lb` or `ub` must be provided. When `lb` == `ub` it is
+        interpreted as an equality constraint.
+    bounds : dict, optional
+        Bounds on variables. Should a dictionary with at least one
+        of the following fields:
+
+            * lb (Tensor or float) - Lower bounds
+            * ub (Tensor or float) - Upper bounds
+
+        Bounds of `-inf`/`inf` are interpreted as no bound. When `lb` == `ub`
+        it is interpreted as an equality constraint.
+    max_iter : int, optional
+        Maximum number of iterations to perform. If unspecified, this will
+        be set to the default of the selected method.
+    tol : float, optional
+        Tolerance for termination. For detailed control, use solver-specific
+        options.
+    callback : callable, optional
+        Function to call after each iteration with the current parameter
+        state, e.g. ``callback(x)``.
+    disp : int
+        Level of algorithm's verbosity:
+
+            * 0 : work silently (default).
+            * 1 : display a termination report.
+            * 2 : display progress during iterations.
+            * 3 : display progress during iterations (more complete report).
+    **kwargs
+        Additional keyword arguments passed to SciPy's trust-constr solver.
+        See options `here <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_.
+
     """
     if max_iter is None:
         max_iter = 1000
@@ -160,7 +213,7 @@ def minimize_constr(
         hess=f_hess, callback=callback, tol=tol,
         bounds=bounds,
         constraints=constraints,
-        options=dict(verbose=disp, maxiter=max_iter, **kwargs)
+        options=dict(verbose=int(disp), maxiter=max_iter, **kwargs)
     )
 
     # convert the important things to torch tensors
