@@ -179,6 +179,11 @@ def minimize_constr(
         Additional keyword arguments passed to SciPy's trust-constr solver.
         See options `here <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_.
 
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
+
     """
     if max_iter is None:
         max_iter = 1000

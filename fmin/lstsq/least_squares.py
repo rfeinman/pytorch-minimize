@@ -191,6 +191,11 @@ def least_squares(
         Additional arguments passed to `fun`. Both empty by default.
         The calling signature is ``fun(x, *args, **kwargs)``.
 
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
+
     """
     if tr_options is None:
         tr_options = {}
