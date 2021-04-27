@@ -115,5 +115,8 @@ For constrained optimization, the [adversarial examples tutorial](https://github
 ## Optimizer API
 
 Coming soon there will be a new, alternative API revolving around the `torch.optim.Optimizer` class. 
-An early prototype can be found at `fmin/optim.py`. 
+An early prototype can be accessed as follows:
+
+    from fmin import Minimizer
+
 It has not been rigorously tested, and documentation is currently limited.

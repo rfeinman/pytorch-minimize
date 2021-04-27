@@ -90,7 +90,7 @@ def _jacobian(inputs, outputs):
     return _tuple_postprocess(jacobian_output_input, (is_outputs_tuple, is_inputs_tuple))
 
 
-class Minimize(Optimizer):
+class Minimizer(Optimizer):
     """A general-purpose optimizer that wraps SciPy's `optimize.minimize`.
 
     .. warning::
