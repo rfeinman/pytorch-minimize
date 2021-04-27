@@ -196,6 +196,20 @@ def least_squares(
     result : OptimizeResult
         Result of the optimization routine.
 
+    References
+    ----------
+    .. [STIR] M. A. Branch, T. F. Coleman, and Y. Li, "A Subspace, Interior,
+              and Conjugate Gradient Method for Large-Scale Bound-Constrained
+              Minimization Problems," SIAM Journal on Scientific Computing,
+              Vol. 21, Number 1, pp 1-23, 1999.
+    .. [Byrd] R. H. Byrd, R. B. Schnabel and G. A. Shultz, "Approximate
+              solution of the trust region problem by minimization over
+              two-dimensional subspaces", Math. Programming, 40, pp. 247-263,
+              1988.
+    .. [JJMore] J. J. More, "The Levenberg-Marquardt Algorithm: Implementation
+                and Theory," Numerical Analysis, ed. G. A. Watson, Lecture
+                Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.
+
     """
     if tr_options is None:
         tr_options = {}
