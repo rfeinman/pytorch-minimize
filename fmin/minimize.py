@@ -33,7 +33,8 @@ def minimize(
         Initialization point
     method : str
         The minimization routine to use. Current options are
-        {'bfgs', 'l-bfgs', 'newton-cg', 'newton-exact'}.
+        {'bfgs', 'l-bfgs', 'newton-cg', 'newton-exact', 'dogleg', 'trust-ncg',
+        'trust-exact'}.
     max_iter : int, optional
         Maximum number of iterations to perform. If unspecified, this will
         be set to the default of the selected method.
