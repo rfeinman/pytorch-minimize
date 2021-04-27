@@ -21,8 +21,9 @@ def minimize(
         disp=0, return_all=False):
     """Minimize a scalar function of one or more variables.
 
-    This is a general-purpose wrapper that calls one of the available
-    minimization routines based on a "method" argument.
+    .. note::
+        This is a general-purpose minimizer that calls one of the available
+        routines based on a supplied "method" argument.
 
     Parameters
     ----------
