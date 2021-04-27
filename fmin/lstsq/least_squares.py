@@ -93,8 +93,10 @@ def least_squares(
     Given the residuals f(x) (an m-D real function of n real
     variables) and the loss function rho(s) (a scalar function), `least_squares`
     finds a local minimum of the cost function F(x)::
+
         minimize F(x) = 0.5 * sum(rho(f_i(x)**2), i = 0, ..., m - 1)
         subject to lb <= x <= ub
+
     The purpose of the loss function rho(s) is to reduce the influence of
     outliers on the solution.
 
@@ -118,13 +120,13 @@ def least_squares(
         case a bound will be the same for all variables. Use ``np.inf`` with
         an appropriate sign to disable bounds on all or some variables.
     method : str, optional
-        Algorithm to perform minimization.
+        Algorithm to perform minimization. Default is 'trf'.
+
             * 'trf' : Trust Region Reflective algorithm, particularly suitable
               for large sparse problems with bounds. Generally robust method.
             * 'dogbox' : dogleg algorithm with rectangular trust regions,
               typical use case is small problems with bounds. Not recommended
               for problems with rank-deficient Jacobian.
-        Default is 'trf'. See Notes for more information.
     ftol : float or None, optional
         Tolerance for termination by the change of the cost function. The
         optimization process is stopped when ``dF < ftol * F``,
@@ -138,6 +140,7 @@ def least_squares(
     gtol : float or None, optional
         Tolerance for termination by the norm of the gradient. Default is 1e-8.
         The exact condition depends on a `method` used:
+
             * For 'trf' : ``norm(g_scaled, ord=np.inf) < gtol``, where
               ``g_scaled`` is the value of the gradient scaled to account for
               the presence of the bounds [STIR]_.
@@ -159,6 +162,7 @@ def least_squares(
         If None (default), the value is chosen as 100 * n.
     tr_solver : str, optional
         Method for solving trust-region subproblems.
+
             * 'exact' is suitable for not very large problems with dense
               Jacobian matrices. The computational complexity per iteration is
               comparable to a singular value decomposition of the Jacobian
@@ -169,6 +173,7 @@ def least_squares(
               product evaluations.
     tr_options : dict, optional
         Keyword options passed to trust-region solver.
+
             * ``tr_solver='exact'``: `tr_options` are ignored.
             * ``tr_solver='lsmr'``: options for `scipy.sparse.linalg.lsmr`.
               Additionally,  ``method='trf'`` supports  'regularize' option
@@ -177,6 +182,7 @@ def least_squares(
               rank-deficient [Byrd]_ (eq. 3.4).
     verbose : int, optional
         Level of algorithm's verbosity.
+
             * 0 : work silently (default).
             * 1 : display a termination report.
             * 2 : display progress during iterations (not supported by 'lm'
