@@ -23,7 +23,7 @@ def minimize(
 
     .. note::
         This is a general-purpose minimizer that calls one of the available
-        routines based on a supplied "method" argument.
+        routines based on a supplied `method` argument.
 
     Parameters
     ----------

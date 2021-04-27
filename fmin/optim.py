@@ -91,7 +91,14 @@ def _jacobian(inputs, outputs):
 
 
 class Minimizer(Optimizer):
-    """A general-purpose optimizer that wraps SciPy's `optimize.minimize`.
+    """A general-purpose PyTorch optimizer for function minimization.
+
+    .. note::
+        This optimizer is a wrapper for :func:`scipy.optimize.minimize`.
+        It uses autograd behind the scenes to build jacobian & hessian
+        callables before invoking scipy. Inputs and objectivs should use
+        PyTorch tensors like other routines. CUDA is supported; however,
+        data will be transferred back-and-forth between GPU/CPU.
 
     .. warning::
         This optimizer doesn't support per-parameter options and parameter
@@ -101,12 +108,23 @@ class Minimizer(Optimizer):
         Right now all parameters have to be on a single device. This will be
         improved in the future.
 
-    Args:
-        method (str or callable, optional): TODO
-        bounds (): TODO
-        constraints (): TODO
-        tol (float, optional): TODO
-        options (dict, optional): TODO
+    Parameters
+    ----------
+    params : iterable
+        An iterable of :class:`torch.Tensor` s. Specifies what Tensors
+        should be optimized.
+    method : str
+        One of the various optimization methods offered in scipy minimize.
+        Defaults to 'bfgs'.
+    bounds : iterable, optional
+        An iterable of :class:`torch.Tensor` s or :class:`float` s with same
+        length as `params`. Specifies boundaries for each parameter.
+    constraints : dict, optional
+        TODO
+    tol : float, optional
+        TODO
+    options : dict, optional
+        TODO
 
     """
     def __init__(self,
