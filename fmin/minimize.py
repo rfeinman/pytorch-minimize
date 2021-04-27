@@ -1,4 +1,3 @@
-import warnings
 import torch
 
 from .bfgs import _minimize_bfgs
@@ -81,11 +80,7 @@ def minimize(
     options.setdefault('return_all', return_all)
 
     if method in ['bfgs', 'l-bfgs']:
-        if method == 'bfgs' and options.get('low_mem', False):
-            warnings.warn("Usage {method='bfgs', low_mem=True} is "
-                          "not recommended. Use {method='l-bfgs'} instead.")
-            method = 'l-bfgs'
-        options['low_mem'] = method == 'l-bfgs'
+        options.setdefault('low_mem', method == 'l-bfgs')
         return _minimize_bfgs(f, x0, **options)
     elif method == 'newton-cg':
         return _minimize_newton_cg(f, x0, **options)
