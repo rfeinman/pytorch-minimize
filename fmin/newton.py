@@ -63,7 +63,7 @@ def _cg_iters(grad, hvp, max_iter, normp=1):
 
 
 @torch.no_grad()
-def fmin_newton_cg(
+def _minimize_newton_cg(
         f, x0, lr=1., max_iter=None, cg_max_iter=None,
         twice_diffable=True, line_search='strong-wolfe', xtol=1e-5,
         normp=1, callback=None, disp=0, return_all=False):
@@ -247,7 +247,7 @@ def fmin_newton_cg(
 
 
 @torch.no_grad()
-def fmin_newton_exact(
+def _minimize_newton_exact(
         f, x0, lr=1., max_iter=None, line_search='strong-wolfe', xtol=1e-5,
         normp=1, tikhonov=0., handle_npd='grad', callback=None, disp=0,
         return_all=False):

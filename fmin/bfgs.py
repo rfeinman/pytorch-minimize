@@ -105,7 +105,7 @@ class BFGS(HessianUpdateStrategy):
 
 
 @torch.no_grad()
-def fmin_bfgs(
+def _minimize_bfgs(
         f, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
         max_iter=None, line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):

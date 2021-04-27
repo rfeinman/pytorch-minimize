@@ -1,8 +1,8 @@
 import warnings
 import torch
 
-from .bfgs import fmin_bfgs
-from .newton import fmin_newton_cg, fmin_newton_exact
+from .bfgs import _minimize_bfgs
+from .newton import _minimize_newton_cg, _minimize_newton_exact
 from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
                           _minimize_trust_ncg)
 
@@ -86,11 +86,11 @@ def minimize(
                           "not recommended. Use {method='l-bfgs'} instead.")
             method = 'l-bfgs'
         options['low_mem'] = method == 'l-bfgs'
-        return fmin_bfgs(f, x0, **options)
+        return _minimize_bfgs(f, x0, **options)
     elif method == 'newton-cg':
-        return fmin_newton_cg(f, x0, **options)
+        return _minimize_newton_cg(f, x0, **options)
     elif method == 'newton-exact':
-        return fmin_newton_exact(f, x0, **options)
+        return _minimize_newton_exact(f, x0, **options)
     elif method == 'dogleg':
         return _minimize_dogleg(f, x0, **options)
     elif method == 'trust-ncg':
