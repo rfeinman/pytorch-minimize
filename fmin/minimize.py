@@ -28,13 +28,21 @@ def minimize(
     Parameters
     ----------
     f : callable
-        Scalar objective function to minimize
+        Scalar objective function to minimize.
     x0 : Tensor
-        Initialization point
+        Initialization point.
     method : str
-        The minimization routine to use. Current options are
-        {'bfgs', 'l-bfgs', 'newton-cg', 'newton-exact', 'dogleg', 'trust-ncg',
-        'trust-exact'}.
+        The minimization routine to use. Should be one of
+
+            - 'bfgs'
+            - 'l-bfgs'
+            - 'newton-cg'
+            - 'newton-exact'
+            - 'dogleg'
+            - 'trust-ncg'
+            - 'trust-exact'
+
+        At the moment, method must be specified; there is no default.
     max_iter : int, optional
         Maximum number of iterations to perform. If unspecified, this will
         be set to the default of the selected method.
@@ -46,8 +54,8 @@ def minimize(
         routine.
     callback : callable, optional
         Function to call after each iteration with the current parameter
-        state, e.g. callback(x)
-    disp : int | bool
+        state, e.g. ``callback(x)``.
+    disp : int or bool
         Display (verbosity) level. Set to >0 to print status messages.
     return_all : bool, optional
         Set to True to return a list of the best solution at each of the
