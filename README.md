@@ -112,9 +112,8 @@ Unlike scipy, jacobian and hessian functions need not be provided to pytorch-min
 
 For constrained optimization, the [adversarial examples tutorial](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/constrained_optimization_adversarial_examples.ipynb) demonstrates how to use the trust-region constrained routine to generate an optimal adversarial perturbation given a constraint on the perturbation norm.
 
-## Onging work
+## Optimizer API
 
-- Optimizer API. Coming soon there will be a new alternative API revolving around the `torch.optim.Optimizer` class. 
-  An early prototype can be found at `fmin/optim.py`. 
-  It has not been rigorously tested, and documentation is limited.
-- Custom constrained optimizers.
+Coming soon there will be a new, alternative API revolving around the `torch.optim.Optimizer` class. 
+An early prototype can be found at `fmin/optim.py`. 
+It has not been rigorously tested, and documentation is currently limited.
