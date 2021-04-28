@@ -8,9 +8,10 @@ def jacobian_dense(fun, x, vectorize=True):
     return autograd.functional.jacobian(fun, x, vectorize=vectorize)
 
 
-def jacobian_linop(fun, x):
+def jacobian_linop(fun, x, return_f=False):
     x = x.detach().requires_grad_(True)
-    f = fun(x)
+    with torch.enable_grad():
+        f = fun(x)
 
     # vector-jacobian product
     def vjp(v):
@@ -20,7 +21,8 @@ def jacobian_linop(fun, x):
 
     # jacobian-vector product
     gf = torch.zeros_like(f, requires_grad=True)
-    gx, = autograd.grad(f, x, gf, create_graph=True)
+    with torch.enable_grad():
+        gx, = autograd.grad(f, x, gf, create_graph=True)
     def jvp(v):
         v = v.view_as(x)
         jvp, = autograd.grad(gx, gf, v, retain_graph=True)
@@ -28,6 +30,8 @@ def jacobian_linop(fun, x):
 
     jac = TorchLinearOperator((f.numel(), x.numel()), matvec=jvp, rmatvec=vjp)
 
+    if return_f:
+        return jac, f.detach()
     return jac
 
 
