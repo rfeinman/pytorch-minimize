@@ -87,7 +87,7 @@ def check_x_scale(x_scale, x0):
 def least_squares(
         fun, x0, bounds=None, method='trf', ftol=1e-8, xtol=1e-8,
         gtol=1e-8, x_scale=1.0, tr_solver='lsmr', tr_options=None,
-        max_nfev=None, verbose=0, args=(), kwargs=None):
+        max_nfev=None, verbose=0):
     r"""Solve a nonlinear least-squares problem with bounds on the variables.
 
     Given the residual function
@@ -105,27 +105,23 @@ def least_squares(
     ----------
     fun : callable
         Function which computes the vector of residuals, with the signature
-        ``fun(x, *args, **kwargs)``, i.e., the minimization proceeds with
-        respect to its first argument. The argument ``x`` passed to this
-        function is an ndarray of shape (n,) (never a scalar, even for n=1).
-        It must allocate and return a 1-D array_like of shape (m,) or a scalar.
-        If the argument ``x`` is complex or the function ``fun`` returns
-        complex residuals, it must be wrapped in a real function of real
-        arguments, as shown at the end of the Examples section.
-    x0 : array_like with shape (n,) or float
-        Initial guess on independent variables. If float, it will be treated
-        as a 1-D array with one element.
-    bounds : 2-tuple of array_like, optional
+        ``fun(x)``. The argument ``x`` passed to this
+        function is a Tensor of shape (n,) (never a scalar, even for n=1).
+        It must allocate and return a 1-D Tensor of shape (m,) or a scalar.
+    x0 : Tensor or float
+        Initial guess on independent variables, with shape (n,). If
+        float, it will be treated as a 1-D Tensor with one element.
+    bounds : 2-tuple of Tensor, optional
         Lower and upper bounds on independent variables. Defaults to no bounds.
-        Each array must match the size of `x0` or be a scalar, in the latter
-        case a bound will be the same for all variables. Use ``np.inf`` with
+        Each Tensor must match the size of `x0` or be a scalar, in the latter
+        case a bound will be the same for all variables. Use ``inf`` with
         an appropriate sign to disable bounds on all or some variables.
     method : str, optional
         Algorithm to perform minimization. Default is 'trf'.
 
             * 'trf' : Trust Region Reflective algorithm, particularly suitable
               for large sparse problems with bounds. Generally robust method.
-            * 'dogbox' : dogleg algorithm with rectangular trust regions,
+            * 'dogbox' : COMING SOON. dogleg algorithm with rectangular trust regions,
               typical use case is small problems with bounds. Not recommended
               for problems with rank-deficient Jacobian.
     ftol : float or None, optional
@@ -140,15 +136,15 @@ def least_squares(
         If None, the termination by this condition is disabled. Default is 1e-8.
     gtol : float or None, optional
         Tolerance for termination by the norm of the gradient. Default is 1e-8.
-        The exact condition depends on a `method` used:
+        The exact condition depends on `method` used:
 
-            * For 'trf' : ``norm(g_scaled, ord=np.inf) < gtol``, where
+            * For 'trf' : ``norm(g_scaled, ord=inf) < gtol``, where
               ``g_scaled`` is the value of the gradient scaled to account for
               the presence of the bounds [STIR]_.
-            * For 'dogbox' : ``norm(g_free, ord=np.inf) < gtol``, where
+            * For 'dogbox' : ``norm(g_free, ord=inf) < gtol``, where
               ``g_free`` is the gradient with respect to the variables which
               are not in the optimal state on the boundary.
-    x_scale : array_like or 'jac', optional
+    x_scale : Tensor or 'jac', optional
         Characteristic scale of each variable. Setting `x_scale` is equivalent
         to reformulating the problem in scaled variables ``xs = x / x_scale``.
         An alternative view is that the size of a trust region along jth
@@ -160,7 +156,7 @@ def least_squares(
         [JJMore]_).
     max_nfev : None or int, optional
         Maximum number of function evaluations before the termination.
-        If None (default), the value is chosen as 100 * n.
+        Defaults to 100 * n.
     tr_solver : str, optional
         Method for solving trust-region subproblems.
 
@@ -186,11 +182,7 @@ def least_squares(
 
             * 0 : work silently (default).
             * 1 : display a termination report.
-            * 2 : display progress during iterations (not supported by 'lm'
-              method).
-    args, kwargs : tuple and dict, optional
-        Additional arguments passed to `fun`. Both empty by default.
-        The calling signature is ``fun(x, *args, **kwargs)``.
+            * 2 : display progress during iterations.
 
     Returns
     -------
@@ -214,8 +206,6 @@ def least_squares(
     """
     if tr_options is None:
         tr_options = {}
-    if kwargs is None:
-        kwargs = {}
 
     if method not in ['trf', 'dogbox']:
         raise ValueError("`method` must be 'trf' or 'dogbox'.")
@@ -261,7 +251,7 @@ def least_squares(
         x0 = make_strictly_feasible(x0, lb, ub)
 
     def fun_wrapped(x):
-        return torch.atleast_1d(fun(x, *args, **kwargs))
+        return torch.atleast_1d(fun(x))
 
     # check function
     f0 = fun_wrapped(x0)
