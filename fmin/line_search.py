@@ -4,13 +4,17 @@ from torch.optim.lbfgs import _strong_wolfe
 from scipy.optimize import minimize_scalar
 
 
-def strong_wolfe(fun, x, t, d, f, g, gtd, **kwargs):
+def strong_wolfe(fun, x, t, d, f, g, gtd=None, **kwargs):
     """
     Expects `fun` to take arguments {x, t, d} and return {f(x1), f'(x1)},
     where x1 is the new location after taking a step from x in direction d
     with step size t.
     """
-    return _strong_wolfe(fun, x, t, d, f, g, gtd, **kwargs)
+    if gtd is None:
+        gtd = g.mul(d).sum()
+    f, g, t, ls_nevals = _strong_wolfe(fun, x.view(-1), t, d.view(-1), f,
+                                       g.view(-1), gtd, **kwargs)
+    return f, g.view_as(x), t, ls_nevals
 
 
 def brent(fun, x, d, bounds=(0,10)):
