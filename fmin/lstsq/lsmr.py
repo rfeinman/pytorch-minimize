@@ -16,7 +16,8 @@ def _sym_ortho(a, b, out):
 
 
 @torch.no_grad()
-def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None):
+def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None,
+         x0=None, check_nonzero=True):
     """Iterative solver for least-squares problems.
 
     lsmr solves the system of linear equations ``Ax = b``. If the system
@@ -104,10 +105,14 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         u.sub_(A.matvec(x))
         beta = u.norm()
 
-    #if beta > 0:
-    u.div_(beta)
-    v = A.rmatvec(u)
-    alpha = v.norm()
+    if beta > 0:
+        u.div_(beta)
+        v = A.rmatvec(u)
+        alpha = v.norm()
+    else:
+        v = b.new_zeros(n)
+        alpha = b.new_tensor(0)
+
     v = torch.where(alpha > 0, v / alpha, v)
 
     # Initialize variables for 1st iteration.
@@ -173,11 +178,14 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None, x0=None)
         u.mul_(-alpha).add_(A.matvec(v))
         torch.norm(u, out=beta)
 
-        #if beta > 0:
-        u.div_(beta)
-        v.mul_(-beta).add_(A.rmatvec(u))
-        torch.norm(v, out=alpha)
-        v = torch.where(alpha > 0, v / alpha, v)
+        if (not check_nonzero) or beta > 0:
+            # check_nonzero option provides a means to avoid the GPU-CPU
+            # synchronization of a `beta > 0` check. For most cases
+            # beta == 0 is unlikely, but use this option with caution.
+            u.div_(beta)
+            v.mul_(-beta).add_(A.rmatvec(u))
+            torch.norm(v, out=alpha)
+            v = torch.where(alpha > 0, v / alpha, v)
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
 
