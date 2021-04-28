@@ -13,16 +13,12 @@ are far more limited.
 """
 import torch
 from fmin import minimize
+from fmin.benchmarks import rosen
 from scipy import optimize
 
 # Many scipy optimizers convert the data to double-precision, so
 # we will use double precision in torch for a fair comparison
 torch.set_default_dtype(torch.float64)
-
-
-def rosen(x):
-    return torch.sum(100. * (x[..., 1:] - x[..., :-1]**2)**2
-                     + (1 - x[..., :-1])**2)
 
 
 def print_header(title, num_breaks=1):
