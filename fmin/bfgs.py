@@ -4,6 +4,7 @@ from torch import Tensor
 from scipy.optimize import OptimizeResult
 from scipy.optimize.optimize import _status_message
 
+from .function import ScalarFunction, DirectionalEvaluate
 from .line_search import strong_wolfe
 
 
@@ -160,20 +161,14 @@ def _minimize_bfgs(
     if low_mem and not inv_hess:
         raise ValueError('inv_hess=False is not available for L-BFGS.')
 
-    def f_with_grad(x):
-        x = x.view_as(x0).detach().requires_grad_(True)
-        with torch.enable_grad():
-            fval = f(x)
-        grad, = torch.autograd.grad(fval, x)
-        return fval.detach(), grad.view(-1)
-
-    def dir_evaluate(x, t, d):
-        x = x.add(d, alpha=t)
-        return f_with_grad(x)
+    # construct scalar objective function
+    f_closure = ScalarFunction(f, x_shape=x0.shape)
+    if line_search == 'strong-wolfe':
+        dir_evaluate = DirectionalEvaluate(f, x_shape=x0.shape)
 
     # compute initial f(x) and f'(x)
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
-    fval, grad = f_with_grad(x)
+    fval, grad, _, _ = f_closure(x)
     nfev = 1
     if disp > 1:
         print('initial fval: %0.4f' % fval)
@@ -232,14 +227,14 @@ def _minimize_bfgs(
 
         if line_search == 'none':
             # no line search, move with fixed-step
-            x_new = x.add(d, alpha=t)
-            fval_new, grad_new = f_with_grad(x_new)
+            x_new = x + d.mul(t)
+            fval_new, grad_new, _, _ = f_closure(x_new)
             nfev += 1
         elif line_search == 'strong-wolfe':
             #  Determine step size via strong-wolfe line search
             fval_new, grad_new, t, ls_evals = \
                 strong_wolfe(dir_evaluate, x, t, d, fval, grad, gtd)
-            x_new = x.add(d, alpha=t)
+            x_new = x + d.mul(t)
             nfev += ls_evals
         else:
             raise ValueError('invalid line_search option {}.'.format(line_search))
@@ -266,23 +261,23 @@ def _minimize_bfgs(
         #   check conditions and update buffers
         # =========================================
 
+        # convergence by insufficient progress
+        if (s.norm(p=normp) <= xtol) | ((fval_new-fval).abs() <= xtol):
+            return terminate(0, _status_message['success'])
+
+        # update state
+        fval[...] = fval_new
+        x.copy_(x_new)
+        grad.copy_(grad_new)
+        t = lr
+
         # convergence by 1st-order optimality
         if grad.norm(p=normp) <= gtol:
             return terminate(0, _status_message['success'])
 
-        # convergence by insufficient progress
-        if s.norm(p=normp) <= xtol or (fval_new-fval).abs() <= xtol:
-            return terminate(0, _status_message['success'])
-
         # precision loss; exit
-        if not fval.isfinite():
+        if ~fval.isfinite():
             return terminate(2, _status_message['pr_loss'])
-
-        # update state
-        fval = fval_new
-        x.copy_(x_new)
-        grad.copy_(grad_new)
-        t = lr
 
     # if we get to the end, the maximum num. iterations was reached
     return terminate(1, "Warning: " + _status_message['maxiter'])

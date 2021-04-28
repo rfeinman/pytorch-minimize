@@ -1,18 +1,16 @@
-import warnings
 from scipy.optimize import OptimizeResult
 from scipy.optimize.optimize import _status_message
 from torch import Tensor
 import torch
-import torch.autograd as autograd
-from torch._vmap_internals import _vmap
 
+from .function import ScalarFunction, DirectionalEvaluate
 from .line_search import strong_wolfe
 
 _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
                              "Hessian is not positive definite."
 
 
-def _cg_iters(grad, hvp, max_iter, normp=1):
+def _cg_iters(grad, hess, max_iter, normp=1):
     """A CG solver specialized for the NewtonCG sub-problem.
 
     Derived from Algorithm 7.1 of "Numerical Optimization (2nd Ed.)"
@@ -36,7 +34,7 @@ def _cg_iters(grad, hvp, max_iter, normp=1):
     for n_iter in range(max_iter):
         if r.norm(p=normp) < tol:
             break
-        Bp = hvp(p)
+        Bp = hess.mv(p)
         curv = dot(p, Bp)
         curv_sum = curv.sum()
         if curv_sum < 0:
@@ -120,31 +118,21 @@ def _minimize_newton_cg(
     if cg_max_iter is None:
         cg_max_iter = x0.numel() * 20
 
-    def f_with_grad(x):
-        x = x.detach().requires_grad_(True)
-        with torch.enable_grad():
-            fval = f(x)
-        grad, = autograd.grad(fval, x)
-        return fval.detach(), grad
-
-    def dir_evaluate(x, t, d):
-        """directional evaluate. Used only for strong-wolfe line search"""
-        x = x.add(d, alpha=t).view_as(x0)
-        fval, grad = f_with_grad(x)
-        return fval, grad.view(-1)
+    # construct scalar objective function
+    f_closure = ScalarFunction(f, hessp=True, twice_diffable=twice_diffable)
+    if line_search == 'strong-wolfe':
+        dir_evaluate = DirectionalEvaluate(f, x_shape=x0.shape)
 
     # initial settings
     x = x0.detach().clone(memory_format=torch.contiguous_format)
+    fval, grad, hessp, _ = f_closure(x)
     if return_all:
         allvecs = [x]
-    fval = x.new_tensor(-1.)
-    grad = x.new_full(x.shape, -1.)
-    nfev = 0  # number of function evals
+    nfev = 1  # number of function evals
     ncg = 0   # number of cg iterations
     n_iter = 0
 
     if disp > 1:
-        fval = f(x)
         print('initial fval: %0.4f' % fval)
 
     def terminate(warnflag, msg):
@@ -170,36 +158,12 @@ def _minimize_newton_cg(
         #       H_f(xk) p = - J_f(xk) starting from 0.
         # ============================================================
 
-        # Compute f(xk) and f'(xk)
-        x.requires_grad_(True)
-        with torch.enable_grad():
-            fval = f(x)
-            # Note: create graph of gradient to enable hessian-vector product
-            grad, = autograd.grad(fval, x, create_graph=True)
-        nfev += 1
-
-        # Initialize hessian-vector product function.
-        # Note: PyTorch `hvp` is significantly slower than `vhp` due to
-        # backward mode AD constraints. If the function is twice continuously
-        # differentiable, then hvp = vhp^T, and we can use the faster vhp.
-        if twice_diffable:
-            hvp = lambda v: autograd.grad(grad, x, v, retain_graph=True)[0]
-        else:
-            g_grad = torch.zeros_like(grad, requires_grad=True)
-            with torch.enable_grad():
-                g_x = autograd.grad(grad, x, g_grad, create_graph=True)[0]
-            hvp = lambda v: autograd.grad(g_x, g_grad, v, retain_graph=True)[0]
-
         # Compute search direction with conjugate gradient (GG)
-        d, cg_iters, cg_fail = _cg_iters(grad.detach(), hvp, cg_max_iter, normp)
+        d, cg_iters, cg_fail = _cg_iters(grad, hessp, cg_max_iter, normp)
         ncg += cg_iters
+
         if cg_fail:
             return terminate(3, _status_message['cg_warn'])
-
-        # Free the autograd graph
-        x = x.detach()
-        fval = fval.detach()
-        grad = grad.detach()
 
 
         # =====================================================
@@ -209,19 +173,19 @@ def _minimize_newton_cg(
         if line_search == 'none':
             update = d.mul(lr)
             x = x + update
-            fval = f(x)
         elif line_search == 'strong-wolfe':
             # strong-wolfe line search
-            gtd = grad.mul(d).sum()
-            fval, grad, t, ls_nevals = \
-                strong_wolfe(dir_evaluate, x.view(-1), lr, d.view(-1), fval,
-                             grad.view(-1), gtd)
-            grad = grad.view_as(x)
+            _, _, t, ls_nevals = \
+                strong_wolfe(dir_evaluate, x, lr, d, fval, grad)
             nfev += ls_nevals
             update = d.mul(t)
             x = x + update
         else:
             raise ValueError('invalid line_search option {}.'.format(line_search))
+
+        # re-evaluate function
+        fval, grad, hessp, _ = f_closure(x)
+        nfev += 1
 
         if disp > 1:
             print('iter %3d - fval: %0.4f' % (n_iter, fval))
@@ -307,33 +271,17 @@ def _minimize_newton_exact(
     xtol = x0.numel() * xtol
     if max_iter is None:
         max_iter = x0.numel() * 200
-    # identity matrix buffer for hessian computation
-    I = torch.eye(x0.numel(), dtype=x0.dtype, device=x0.device)
 
-    def dir_evaluate(x, t, d):
-        """directional evaluate. Used only for strong-wolfe line search"""
-        x = x.add(d, alpha=t)
-        x = x.view_as(x0).detach().requires_grad_(True)
-        with torch.enable_grad():
-            fval = f(x)
-        grad, = autograd.grad(fval, x)
-        return fval.detach(), grad.view(-1)
-
-    def f_with_hess(x):
-        x = x.view_as(x0).detach().requires_grad_(True)
-        with torch.enable_grad():
-            fval = f(x)
-            grad = autograd.grad(fval, x, create_graph=True)[0].view(-1)
-            hess = _vmap(lambda v: autograd.grad(grad, x, v)[0])(I)
-        hess = hess.view(x0.numel(), x0.numel())
-        if tikhonov > 0:
-            hess.diagonal().add_(tikhonov)
-
-        return fval.detach(), grad.detach(), hess
+    # Construct scalar objective function
+    f_closure = ScalarFunction(f, x_shape=x0.shape, hess=True)
+    if line_search == 'strong-wolfe':
+        dir_evaluate = DirectionalEvaluate(f, x_shape=x0.shape)
 
     # initial settings
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
-    fval, grad, hess = f_with_hess(x)
+    fval, grad, _, hess = f_closure(x)
+    if tikhonov > 0:
+        hess.diagonal().add_(tikhonov)
     if disp > 1:
         print('initial fval: %0.4f' % fval)
     if return_all:
@@ -398,9 +346,8 @@ def _minimize_newton_exact(
             x = x + update
         elif line_search == 'strong-wolfe':
             # strong-wolfe line search
-            gtd = grad.mul(d).sum()
             _, _, t, ls_nevals = \
-                strong_wolfe(dir_evaluate, x, lr, d, fval, grad, gtd)
+                strong_wolfe(dir_evaluate, x, lr, d, fval, grad)
             nfev += ls_nevals
             update = d.mul(t)
             x = x + update
@@ -411,7 +358,9 @@ def _minimize_newton_exact(
         #  Re-evaluate func/Jacobian/Hessian
         # ===================================
 
-        fval, grad, hess = f_with_hess(x)
+        fval, grad, _, hess = f_closure(x)
+        if tikhonov > 0:
+            hess.diagonal().add_(tikhonov)
         nfev += 1
 
         if disp > 1:
