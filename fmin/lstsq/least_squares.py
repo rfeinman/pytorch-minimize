@@ -90,15 +90,16 @@ def least_squares(
         max_nfev=None, verbose=0, args=(), kwargs=None):
     r"""Solve a nonlinear least-squares problem with bounds on the variables.
 
-    Given the residuals f(x) (an m-D real function of n real
-    variables) and the loss function rho(s) (a scalar function), `least_squares`
-    finds a local minimum of the cost function F(x)::
+    Given the residual function
+    :math:`f: \mathcal{R}^n \rightarrow \mathcal{R}^m`, `least_squares`
+    finds a local minimum of the residual sum-of-squares (RSS) objective:
 
-        minimize F(x) = 0.5 * sum(rho(f_i(x)**2), i = 0, ..., m - 1)
-        subject to lb <= x <= ub
+    .. math::
+        x^* = \underset{x}{\operatorname{arg\,min\,}}
+        \frac{1}{2} ||f(x)||_2^2 \quad \text{subject to} \quad lb \leq x \leq ub
 
-    The purpose of the loss function rho(s) is to reduce the influence of
-    outliers on the solution.
+    The solution is found using variants of the Gauss-Newton method, a
+    modification of Newton's method tailored to RSS problems.
 
     Parameters
     ----------
