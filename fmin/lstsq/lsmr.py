@@ -3,44 +3,13 @@ Code modified from scipy.sparse.linalg.lsmr
 
 Copyright (C) 2010 David Fong and Michael Saunders
 """
-from typing import Tuple
-from torch import Tensor
 import torch
 
 from .linear_operator import aslinearoperator
 
 
-# @torch.jit.script
-# def _sym_ortho(a, b) -> Tuple[Tensor, Tensor, Tensor]:
-#     """Stable implementation of Givens rotation."""
-#     zero = torch.tensor(0., dtype=a.dtype, device=a.device)
-#     if b == 0:
-#         return torch.sign(a), zero, torch.abs(a)
-#     elif a == 0:
-#         return zero, torch.sign(b), torch.abs(b)
-#     elif torch.abs(b) > torch.abs(a):
-#         tau = a / b
-#         s = torch.sign(b) / torch.sqrt(1 + torch.square(tau))
-#         c = s * tau
-#         r = b / s
-#     else:
-#         tau = b / a
-#         c = torch.sign(a) / torch.sqrt(1 + torch.square(tau))
-#         s = c * tau
-#         r = a / c
-#     return c, s, r
-
-
-# @torch.jit.script
-# def _sym_ortho(a, b) -> Tuple[Tensor, Tensor, Tensor]:
-#     r = torch.sqrt(a**2 + b**2)
-#     c = a / r
-#     s = b / r
-#     return c, s, r
-
-
 def _sym_ortho(a, b, out):
-    torch.sqrt(a**2 + b**2, out=out[2])
+    torch.hypot(a, b, out=out[2])
     torch.div(a, out[2], out=out[0])
     torch.div(b, out[2], out=out[1])
     return out
