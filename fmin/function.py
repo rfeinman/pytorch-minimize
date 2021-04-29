@@ -100,3 +100,35 @@ class DirectionalEvaluate(ScalarFunction):
         x = x + t * d
         f, grad, _, _ = super().__call__(x)
         return float(f), grad
+
+
+class VectorFunction(object):
+    def __init__(self, fun, x_shape=None, jacp=False, jac=False):
+        if x_shape is not None:
+            fun_ = fun
+            fun = lambda x: fun_(x.view(x_shape)).view(-1)
+        self._fun = fun
+        self._jacp = jacp
+        self._jac = jac
+        self._I = None
+        self.nfev = 0
+
+    def __call__(self, x):
+        self.nfev += 1
+        x = x.detach().requires_grad_(True)
+        with torch.enable_grad():
+            f = self._fun(x)
+            if f.dim() == 0:
+                raise RuntimeError('VectorFunction expected vector outputs but '
+                                   'received a scalar.')
+        jacp = None
+        jac = None
+        if self._jacp:
+            jacp = JacobianLinearOperator(x, f)
+        if self._jac:
+            if self._I is None:
+                self._I = torch.eye(x.numel(), dtype=x.dtype, device=x.device)
+            jvp = lambda v: autograd.grad(f, x, v, retain_graph=True)[0]
+            jac = _vmap(jvp)(self._I)
+
+        return vf_value(f=f.detach(), jacp=jacp, jac=jac)
