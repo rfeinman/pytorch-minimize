@@ -3,7 +3,7 @@ from scipy.optimize.optimize import _status_message
 from torch import Tensor
 import torch
 
-from .function import ScalarFunction, DirectionalEvaluate
+from .function import ScalarFunction
 from .line_search import strong_wolfe
 
 _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
@@ -119,9 +119,10 @@ def _minimize_newton_cg(
         cg_max_iter = x0.numel() * 20
 
     # construct scalar objective function
-    f_closure = ScalarFunction(f, x0.shape, hessp=True, twice_diffable=twice_diffable)
+    sf = ScalarFunction(f, x0.shape, hessp=True, twice_diffable=twice_diffable)
+    f_closure = sf.closure
     if line_search == 'strong-wolfe':
-        dir_evaluate = DirectionalEvaluate(f, x0.shape)
+        dir_evaluate = sf.dir_evaluate
 
     # initial settings
     x = x0.detach().clone(memory_format=torch.contiguous_format)
@@ -273,9 +274,11 @@ def _minimize_newton_exact(
         max_iter = x0.numel() * 200
 
     # Construct scalar objective function
-    f_closure = ScalarFunction(f, x0.shape, hess=True)
+    sf = ScalarFunction(f, x0.shape, hess=True)
+    f_closure = sf.closure
     if line_search == 'strong-wolfe':
-        dir_evaluate = DirectionalEvaluate(f, x0.shape)
+        dir_evaluate = sf.dir_evaluate
+        #dir_evaluate = DirectionalEvaluate(f, x0.shape)
 
     # initial settings
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)

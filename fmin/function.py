@@ -5,9 +5,15 @@ import torch
 import torch.autograd as autograd
 from torch._vmap_internals import _vmap
 
-__all__ = ['ScalarFunction', 'DirectionalEvaluate']
+__all__ = ['ScalarFunction', 'VectorFunction']
 
+# scalar function result (value)
 sf_value = namedtuple('sf_value', ['f', 'grad', 'hessp', 'hess'])
+
+# directional evaluate result
+de_value = namedtuple('de_value', ['f', 'grad'])
+
+# vector function result (value)
 vf_value = namedtuple('vf_value', ['f', 'jacp', 'jac'])
 
 
@@ -55,6 +61,12 @@ class JacobianLinearOperator(object):
 
 
 class ScalarFunction(object):
+    """Scalar-valued objective function with autograd backend.
+
+    This class provides a general-purpose objective wrapper which will
+    compute first- and second-order derivatives via autograd as specified
+    by the parameters of __init__.
+    """
     def __init__(self, fun, x_shape, hessp=False, hess=False,
                  twice_diffable=True):
         self.__fun = fun
@@ -68,16 +80,23 @@ class ScalarFunction(object):
     def _fun(self, x):
         if x.shape != self._x_shape:
             x = x.view(self._x_shape)
-        return self.__fun(x)
-
-    def __call__(self, x):
+        f = self.__fun(x)
+        if f.numel() != 1:
+            raise RuntimeError('ScalarFunction was supplied a function '
+                               'that does not return scalar outputs.')
         self.nfev += 1
+
+        return f
+
+    def closure(self, x):
+        """Evaluate the function, gradient, and hessian/hessian-product
+
+        This method represents the core function call. It is used for
+        computing newton/quasi newton directions, etc.
+        """
         x = x.detach().requires_grad_(True)
         with torch.enable_grad():
             f = self._fun(x)
-            if f.numel() != 1:
-                raise RuntimeError('ScalarFunction was supplied a function '
-                                   'that does not return scalar outputs.')
             grad = autograd.grad(f, x, create_graph=self._hessp or self._hess)[0]
         hessp = None
         hess = None
@@ -91,36 +110,49 @@ class ScalarFunction(object):
 
         return sf_value(f=f.detach(), grad=grad.detach(), hessp=hessp, hess=hess)
 
+    def dir_evaluate(self, x, t, d):
+        """Evaluate a direction and step size.
 
-class DirectionalEvaluate(ScalarFunction):
-    def __init__(self, fun, x_shape):
-        super().__init__(fun, x_shape)
+        We define a separate "directional evaluate" function to be used
+        for strong-wolfe line search. Only the function value and gradient
+        are needed for this use case, so we avoid computational overhead.
+        """
+        x = x + d.mul(t)
+        x = x.detach().requires_grad_(True)
+        with torch.enable_grad():
+            f = self._fun(x)
+        grad = autograd.grad(f, x)[0]
 
-    def __call__(self, x, t, d):
-        x = x + t * d
-        f, grad, _, _ = super().__call__(x)
-        return float(f), grad
+        return de_value(f=float(f), grad=grad)
 
 
 class VectorFunction(object):
-    def __init__(self, fun, x_shape=None, jacp=False, jac=False):
-        if x_shape is not None:
-            fun_ = fun
-            fun = lambda x: fun_(x.view(x_shape)).view(-1)
-        self._fun = fun
+    """Vector-valued objective function with autograd backend."""
+    def __init__(self, fun, x_shape, jacp=False, jac=False):
+        self.__fun = fun
+        self._x_shape = x_shape
         self._jacp = jacp
         self._jac = jac
         self._I = None
         self.nfev = 0
 
-    def __call__(self, x):
+    def _fun(self, x):
+        if x.shape != self._x_shape:
+            x = x.view(self._x_shape)
+        f = self.__fun(x)
+        if f.dim() == 0:
+            raise RuntimeError('VectorFunction expected vector outputs but '
+                               'received a scalar.')
+        elif f.dim() > 1:
+            f = f.view(-1)
         self.nfev += 1
+
+        return f
+
+    def closure(self, x):
         x = x.detach().requires_grad_(True)
         with torch.enable_grad():
             f = self._fun(x)
-            if f.dim() == 0:
-                raise RuntimeError('VectorFunction expected vector outputs but '
-                                   'received a scalar.')
         jacp = None
         jac = None
         if self._jacp:

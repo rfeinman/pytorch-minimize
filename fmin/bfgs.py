@@ -4,7 +4,7 @@ from torch import Tensor
 from scipy.optimize import OptimizeResult
 from scipy.optimize.optimize import _status_message
 
-from .function import ScalarFunction, DirectionalEvaluate
+from .function import ScalarFunction
 from .line_search import strong_wolfe
 
 
@@ -162,9 +162,10 @@ def _minimize_bfgs(
         raise ValueError('inv_hess=False is not available for L-BFGS.')
 
     # construct scalar objective function
-    f_closure = ScalarFunction(f, x0.shape)
+    sf = ScalarFunction(f, x0.shape)
+    f_closure = sf.closure
     if line_search == 'strong-wolfe':
-        dir_evaluate = DirectionalEvaluate(f, x0.shape)
+        dir_evaluate = sf.dir_evaluate
 
     # compute initial f(x) and f'(x)
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
