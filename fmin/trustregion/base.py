@@ -26,9 +26,9 @@ class BaseQuadraticSubproblem(ABC):
     Base/abstract class defining the quadratic model for trust-region
     minimization. Child classes must implement the ``solve`` method.
     """
-    def __init__(self, x, f_closure):
+    def __init__(self, x, closure):
         # evaluate closure
-        f, g, hessp, hess = f_closure(x)
+        f, g, hessp, hess = closure(x)
 
         self._x = x
         self._f = f
@@ -157,7 +157,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
     # Construct scalar objective function
     hessp = subproblem.hess_prod
     sf = ScalarFunction(fun, x0.shape, hessp=hessp, hess=not hessp)
-    f_closure = sf.closure
+    closure = sf.closure
 
     # init the search status
     warnflag = 1  # maximum iterations flag
@@ -171,7 +171,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         allvecs = [x]
 
     # initial subproblem
-    m = subproblem(x, f_closure)
+    m = subproblem(x, closure)
 
     # search for the function min
     # do not even start if the gradient is small enough
@@ -196,7 +196,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
 
         # define the local approximation at the proposed point
         x_proposed = x + p
-        m_proposed = subproblem(x_proposed, f_closure)
+        m_proposed = subproblem(x_proposed, closure)
 
         # evaluate the ratio defined in equation (4.4)
         actual_reduction = m.fun - m_proposed.fun
@@ -245,7 +245,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         # print("         Gradient evaluations: %d" % sf.ngev)
         # print("         Hessian evaluations: %d" % (sf.nhev + nhessp[0]))
 
-    result = OptimizeResult(x=x.view_as(x0), fun=m.fun, jac=m.jac.view_as(x0),
+    result = OptimizeResult(x=x.view_as(x0), fun=m.fun, grad=m.jac.view_as(x0),
                             success=(warnflag == 0), status=warnflag,
                             nfev=sf.nfev, nit=k, message=status_messages[warnflag])
 

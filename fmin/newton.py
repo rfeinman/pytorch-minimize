@@ -62,7 +62,7 @@ def _cg_iters(grad, hess, max_iter, normp=1):
 
 @torch.no_grad()
 def _minimize_newton_cg(
-        f, x0, lr=1., max_iter=None, cg_max_iter=None,
+        fun, x0, lr=1., max_iter=None, cg_max_iter=None,
         twice_diffable=True, line_search='strong-wolfe', xtol=1e-5,
         normp=1, callback=None, disp=0, return_all=False):
     """
@@ -72,7 +72,7 @@ def _minimize_newton_cg(
 
     Parameters
     ----------
-    f : callable
+    fun : callable
         Scalar objective function to minimize
     x0 : Tensor
         Initialization point
@@ -119,16 +119,16 @@ def _minimize_newton_cg(
         cg_max_iter = x0.numel() * 20
 
     # construct scalar objective function
-    sf = ScalarFunction(f, x0.shape, hessp=True, twice_diffable=twice_diffable)
-    f_closure = sf.closure
+    sf = ScalarFunction(fun, x0.shape, hessp=True, twice_diffable=twice_diffable)
+    closure = sf.closure
     if line_search == 'strong-wolfe':
         dir_evaluate = sf.dir_evaluate
 
     # initial settings
     x = x0.detach().clone(memory_format=torch.contiguous_format)
-    fval, grad, hessp, _ = f_closure(x)
+    f, g, hessp, _ = closure(x)
     if disp > 1:
-        print('initial fval: %0.4f' % fval)
+        print('initial fval: %0.4f' % f)
     if return_all:
         allvecs = [x]
     ncg = 0   # number of cg iterations
@@ -143,7 +143,7 @@ def _minimize_newton_cg(
         # ============================================================
 
         # Compute search direction with conjugate gradient (GG)
-        d, cg_iters, cg_fail = _cg_iters(grad, hessp, cg_max_iter, normp)
+        d, cg_iters, cg_fail = _cg_iters(g, hessp, cg_max_iter, normp)
         ncg += cg_iters
 
         if cg_fail:
@@ -160,18 +160,17 @@ def _minimize_newton_cg(
             x = x + update
         elif line_search == 'strong-wolfe':
             # strong-wolfe line search
-            _, _, t, ls_nevals = \
-                strong_wolfe(dir_evaluate, x, lr, d, fval, grad)
+            _, _, t, ls_nevals = strong_wolfe(dir_evaluate, x, lr, d, f, g)
             update = d.mul(t)
             x = x + update
         else:
             raise ValueError('invalid line_search option {}.'.format(line_search))
 
         # re-evaluate function
-        fval, grad, hessp, _ = f_closure(x)
+        f, g, hessp, _ = closure(x)
 
         if disp > 1:
-            print('iter %3d - fval: %0.4f' % (n_iter, fval))
+            print('iter %3d - fval: %0.4f' % (n_iter, f))
         if callback is not None:
             callback(x)
         if return_all:
@@ -186,7 +185,7 @@ def _minimize_newton_cg(
             msg = _status_message['success']
             break
 
-        if not fval.isfinite():
+        if not f.isfinite():
             warnflag = 3
             msg = _status_message['nan']
             break
@@ -198,11 +197,11 @@ def _minimize_newton_cg(
 
     if disp:
         print(msg)
-        print("         Current function value: %f" % fval)
+        print("         Current function value: %f" % f)
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
         print("         CG iterations: %d" % ncg)
-    result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev, ncg=ncg,
+    result = OptimizeResult(fun=f, grad=g, nfev=sf.nfev, ncg=ncg,
                             status=warnflag, success=(warnflag==0),
                             message=msg, x=x, nit=n_iter)
     if return_all:
@@ -213,7 +212,7 @@ def _minimize_newton_cg(
 
 @torch.no_grad()
 def _minimize_newton_exact(
-        f, x0, lr=1., max_iter=None, line_search='strong-wolfe', xtol=1e-5,
+        fun, x0, lr=1., max_iter=None, line_search='strong-wolfe', xtol=1e-5,
         normp=1, tikhonov=0., handle_npd='grad', callback=None, disp=0,
         return_all=False):
     """
@@ -226,7 +225,7 @@ def _minimize_newton_exact(
 
     Parameters
     ----------
-    f : callable
+    fun : callable
         Scalar objective function to minimize
     x0 : Tensor
         Initialization point
@@ -274,18 +273,18 @@ def _minimize_newton_exact(
         max_iter = x0.numel() * 200
 
     # Construct scalar objective function
-    sf = ScalarFunction(f, x0.shape, hess=True)
-    f_closure = sf.closure
+    sf = ScalarFunction(fun, x0.shape, hess=True)
+    closure = sf.closure
     if line_search == 'strong-wolfe':
         dir_evaluate = sf.dir_evaluate
 
     # initial settings
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
-    fval, grad, _, hess = f_closure(x)
+    f, g, _, hess = closure(x)
     if tikhonov > 0:
         hess.diagonal().add_(tikhonov)
     if disp > 1:
-        print('initial fval: %0.4f' % fval)
+        print('initial fval: %0.4f' % f)
     if return_all:
         allvecs = [x]
     nfail = 0
@@ -302,23 +301,22 @@ def _minimize_newton_exact(
 
         # Compute search direction with Cholesky solve
         try:
-            d = torch.cholesky_solve(grad.neg().unsqueeze(1),
+            d = torch.cholesky_solve(g.neg().unsqueeze(1),
                                      torch.linalg.cholesky(hess)).squeeze(1)
             chol_fail = False
         except:
             chol_fail = True
             nfail += 1
             if handle_npd == 'lu':
-                d = torch.linalg.solve(hess, grad.neg())
+                d = torch.linalg.solve(hess, g.neg())
             elif handle_npd == 'grad':
-                d = grad.neg()
+                d = g.neg()
             elif handle_npd == 'eig':
                 # this setting is experimental! use with caution
                 eig, V = torch.linalg.eigh(hess)
                 tau = torch.clamp(-1.5 * eig[0], min=1e-3)
                 eig.add_(tau)
-                #grad.add_(x, alpha=tau)
-                d = - V.mv(V.t().mv(grad) / eig)
+                d = - V.mv(V.t().mv(g) / eig)
             else:
                 raise RuntimeError('invalid handle_npd encountered.')
 
@@ -332,8 +330,7 @@ def _minimize_newton_exact(
             x = x + update
         elif line_search == 'strong-wolfe':
             # strong-wolfe line search
-            _, _, t, ls_nevals = \
-                strong_wolfe(dir_evaluate, x, lr, d, fval, grad)
+            _, _, t, ls_nevals = strong_wolfe(dir_evaluate, x, lr, d, f, g)
             update = d.mul(t)
             x = x + update
         else:
@@ -343,12 +340,12 @@ def _minimize_newton_exact(
         #  Re-evaluate func/Jacobian/Hessian
         # ===================================
 
-        fval, grad, _, hess = f_closure(x)
+        f, g, _, hess = closure(x)
         if tikhonov > 0:
             hess.diagonal().add_(tikhonov)
 
         if disp > 1:
-            print('iter %3d - fval: %0.4f - chol_fail: %r' % (n_iter, fval, chol_fail))
+            print('iter %3d - fval: %0.4f - chol_fail: %r' % (n_iter, f, chol_fail))
         if callback is not None:
             callback(x)
         if return_all:
@@ -363,7 +360,7 @@ def _minimize_newton_exact(
             msg = _status_message['success']
             break
 
-        if not fval.isfinite():
+        if not f.isfinite():
             warnflag = 3
             msg = _status_message['nan']
             break
@@ -375,10 +372,10 @@ def _minimize_newton_exact(
 
     if disp:
         print(msg)
-        print("         Current function value: %f" % fval)
+        print("         Current function value: %f" % f)
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
-    result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev, nfail=nfail,
+    result = OptimizeResult(fun=f, grad=g, nfev=sf.nfev, nfail=nfail,
                             status=warnflag, success=(warnflag==0),
                             message=msg, x=x.view_as(x0), nit=n_iter)
     if return_all:

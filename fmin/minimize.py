@@ -19,7 +19,7 @@ _tolerance_keys = {
 
 
 def minimize(
-        f, x0, method, max_iter=None, tol=None, options=None, callback=None,
+        fun, x0, method, max_iter=None, tol=None, options=None, callback=None,
         disp=0, return_all=False):
     """Minimize a scalar function of one or more variables.
 
@@ -29,7 +29,7 @@ def minimize(
 
     Parameters
     ----------
-    f : callable
+    fun : callable
         Scalar objective function to minimize.
     x0 : Tensor
         Initialization point.
@@ -85,18 +85,18 @@ def minimize(
 
     if method in ['bfgs', 'l-bfgs']:
         options.setdefault('low_mem', method == 'l-bfgs')
-        return _minimize_bfgs(f, x0, **options)
+        return _minimize_bfgs(fun, x0, **options)
     elif method == 'cg':
-        return _minimize_cg(f, x0, **options)
+        return _minimize_cg(fun, x0, **options)
     elif method == 'newton-cg':
-        return _minimize_newton_cg(f, x0, **options)
+        return _minimize_newton_cg(fun, x0, **options)
     elif method == 'newton-exact':
-        return _minimize_newton_exact(f, x0, **options)
+        return _minimize_newton_exact(fun, x0, **options)
     elif method == 'dogleg':
-        return _minimize_dogleg(f, x0, **options)
+        return _minimize_dogleg(fun, x0, **options)
     elif method == 'trust-ncg':
-        return _minimize_trust_ncg(f, x0, **options)
+        return _minimize_trust_ncg(fun, x0, **options)
     elif method == 'trust-exact':
-        return _minimize_trust_exact(f, x0, **options)
+        return _minimize_trust_exact(fun, x0, **options)
     else:
         raise RuntimeError('invalid method "{}" encountered.'.format(method))

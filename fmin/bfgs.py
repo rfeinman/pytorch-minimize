@@ -107,14 +107,14 @@ class BFGS(HessianUpdateStrategy):
 
 @torch.no_grad()
 def _minimize_bfgs(
-        f, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
+        fun, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
         max_iter=None, line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a multivariate function with BFGS or L-BFGS
 
     Parameters
     ----------
-    f : callable
+    fun : callable
         Scalar objective function to minimize
     x0 : Tensor
         Initialization point
@@ -162,16 +162,16 @@ def _minimize_bfgs(
         raise ValueError('inv_hess=False is not available for L-BFGS.')
 
     # construct scalar objective function
-    sf = ScalarFunction(f, x0.shape)
-    f_closure = sf.closure
+    sf = ScalarFunction(fun, x0.shape)
+    closure = sf.closure
     if line_search == 'strong-wolfe':
         dir_evaluate = sf.dir_evaluate
 
     # compute initial f(x) and f'(x)
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)
-    fval, grad, _, _ = f_closure(x)
+    f, g, _, _ = closure(x)
     if disp > 1:
-        print('initial fval: %0.4f' % fval)
+        print('initial fval: %0.4f' % f)
     if return_all:
         allvecs = [x]
 
@@ -180,8 +180,8 @@ def _minimize_bfgs(
         hess = L_BFGS(x, history_size)
     else:
         hess = BFGS(x, inv_hess)
-    d = grad.neg()
-    t = min(1., grad.norm(p=1).reciprocal()) * lr
+    d = g.neg()
+    t = min(1., g.norm(p=1).reciprocal()) * lr
     n_iter = 0
 
     # BFGS iterations
@@ -192,10 +192,10 @@ def _minimize_bfgs(
         # ==================================
 
         if n_iter > 1:
-            d = hess.solve(grad)
+            d = hess.solve(g)
 
         # directional derivative
-        gtd = grad.dot(d)
+        gtd = g.dot(d)
 
         # check if directional derivative is below tolerance
         if gtd > -xtol:
@@ -210,17 +210,17 @@ def _minimize_bfgs(
         if line_search == 'none':
             # no line search, move with fixed-step
             x_new = x + d.mul(t)
-            fval_new, grad_new, _, _ = f_closure(x_new)
+            f_new, g_new, _, _ = closure(x_new)
         elif line_search == 'strong-wolfe':
             #  Determine step size via strong-wolfe line search
-            fval_new, grad_new, t, ls_evals = \
-                strong_wolfe(dir_evaluate, x, t, d, fval, grad, gtd)
+            f_new, g_new, t, ls_evals = \
+                strong_wolfe(dir_evaluate, x, t, d, f, g, gtd)
             x_new = x + d.mul(t)
         else:
             raise ValueError('invalid line_search option {}.'.format(line_search))
 
         if disp > 1:
-            print('iter %3d - fval: %0.4f' % (n_iter, fval_new))
+            print('iter %3d - fval: %0.4f' % (n_iter, f_new))
         if return_all:
             allvecs.append(x_new)
         if callback is not None:
@@ -231,7 +231,7 @@ def _minimize_bfgs(
         # ================================
 
         s = x_new.sub(x)
-        y = grad_new.sub(grad)
+        y = g_new.sub(g)
 
         hess.update(s, y)
 
@@ -240,25 +240,25 @@ def _minimize_bfgs(
         # =========================================
 
         # convergence by insufficient progress
-        if (s.norm(p=normp) <= xtol) | ((fval_new-fval).abs() <= xtol):
+        if (s.norm(p=normp) <= xtol) | ((f_new - f).abs() <= xtol):
             warnflag = 0
             msg = _status_message['success']
             break
 
         # update state
-        fval[...] = fval_new
+        f[...] = f_new
         x.copy_(x_new)
-        grad.copy_(grad_new)
+        g.copy_(g_new)
         t = lr
 
         # convergence by 1st-order optimality
-        if grad.norm(p=normp) <= gtol:
+        if g.norm(p=normp) <= gtol:
             warnflag = 0
             msg = _status_message['success']
             break
 
         # precision loss; exit
-        if ~fval.isfinite():
+        if ~f.isfinite():
             warnflag = 2
             msg = _status_message['pr_loss']
             break
@@ -270,10 +270,10 @@ def _minimize_bfgs(
 
     if disp:
         print(msg)
-        print("         Current function value: %f" % fval)
+        print("         Current function value: %f" % f)
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
-    result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev,
+    result = OptimizeResult(fun=f, grad=g, nfev=sf.nfev,
                             status=warnflag, success=(warnflag==0),
                             message=msg, x=x.view_as(x0), nit=n_iter)
     if return_all:
