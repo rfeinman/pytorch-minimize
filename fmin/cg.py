@@ -57,43 +57,52 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
     old_f = f + g.norm() / 2  # Sets the initial step guess to dx ~ 1
 
     for niter in range(1, max_iter + 1):
+        # delta/gtd
         delta = g.dot(g)
+        gtd = g.dot(d)
 
+        # compute initial step guess based on (f - old_f) / gtd
+        t0 = torch.clamp(2.02 * (f - old_f) / gtd, max=1.0)
+        if t0 <= 0:
+            warnings.warn('initial step guess is negative.')
+        old_f = f
+
+        # buffer to store next direction vector
         cached_step = [None]
 
         def polak_ribiere_powell_step(t, g_next):
-            x_next = x + d.mul(t)
             y = g_next - g
             beta = torch.clamp(y.dot(g_next) / delta, min=0)
             d_next = -g_next + d.mul(beta)
             torch.norm(g_next, p=normp, out=grad_norm)
-            return t, x_next, d_next, g_next
+            return t, d_next
 
         def descent_condition(t, f_next, g_next):
             # Polak-Ribiere+ needs an explicit check of a sufficient
             # descent condition, which is not guaranteed by strong Wolfe.
             cached_step[:] = polak_ribiere_powell_step(t, g_next)
-            t, x, d, g = cached_step
+            t, d_next = cached_step
 
-            # Accept step if it leads to convergence or if sufficient
-            # descent condition applies.
-            return (grad_norm <= gtol) | (d.dot(g) <= -0.01 * g.dot(g))
+            # Accept step if it leads to convergence.
+            cond1 = grad_norm <= gtol
 
-        gtd = g.dot(d)
-        t0 = torch.clamp(2.02 * (f - old_f) / gtd, max=1.0)
-        if t0 <= 0:
-            warnings.warn('initial step guess is negative.')
+            # Accept step if sufficient descent condition applies.
+            cond2 = d_next.dot(g_next) <= -0.01 * g_next.dot(g_next)
 
-        old_f = f
-        f, g_next, t, ls_evals = \
+            return cond1 | cond2
+
+        # Perform CG step
+        f, g, t, ls_evals = \
                 strong_wolfe(dir_evaluate, x, t0, d, f, g, gtd,
                              c2=0.4, extra_condition=descent_condition)
 
-        # Reuse already computed results if possible
+        # Update x and then update d (in that order)
+        x = x + d.mul(t)
         if t == cached_step[0]:
-            t, x, d, g = cached_step
+            # Reuse already computed results if possible
+            d = cached_step[1]
         else:
-            t, x, d, g = polak_ribiere_powell_step(t, g_next)
+            d = polak_ribiere_powell_step(t, g)[1]
 
         if disp > 1:
             print('iter %3d - fval: %0.4f' % (niter, f))
