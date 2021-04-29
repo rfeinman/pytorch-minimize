@@ -1,6 +1,6 @@
 import torch
 
-from .bfgs import _minimize_bfgs
+from .bfgs import _minimize_bfgs, _minimize_lbfgs
 from .cg import _minimize_cg
 from .newton import _minimize_newton_cg, _minimize_newton_exact
 from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
@@ -83,9 +83,10 @@ def minimize(
     options.setdefault('disp', disp)
     options.setdefault('return_all', return_all)
 
-    if method in ['bfgs', 'l-bfgs']:
-        options.setdefault('low_mem', method == 'l-bfgs')
+    if method == 'bfgs':
         return _minimize_bfgs(fun, x0, **options)
+    elif method == 'l-bfgs':
+        return _minimize_lbfgs(fun, x0, **options)
     elif method == 'cg':
         return _minimize_cg(fun, x0, **options)
     elif method == 'newton-cg':

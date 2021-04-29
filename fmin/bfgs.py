@@ -106,11 +106,13 @@ class BFGS(HessianUpdateStrategy):
 
 
 @torch.no_grad()
-def _minimize_bfgs(
+def _minimize_bfgs_core(
         fun, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
         max_iter=None, line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):
-    """Minimize a multivariate function with BFGS or L-BFGS
+    """Minimize a multivariate function with BFGS or L-BFGS.
+
+    We choose from BFGS/L-BFGS with the `low_mem` argument.
 
     Parameters
     ----------
@@ -134,16 +136,16 @@ def _minimize_bfgs(
         Line search specifier. Currently the available options are
         {'none', 'strong_wolfe'}.
     gtol : float
-        Termination tolerance on 1st-order optimality (gradient magnitude)
+        Termination tolerance on 1st-order optimality (gradient norm).
     xtol : float
-        Termination tolerance on function/parameter changes
-    normp : int | float | str
+        Termination tolerance on function/parameter changes.
+    normp : Number or str
         The norm type to use for termination conditions. Can be any value
         supported by `torch.norm` p argument.
     callback : callable, optional
         Function to call after each iteration with the current parameter
-        state, e.g. callback(x_k)
-    disp : int | bool
+        state, e.g. callback(x_k).
+    disp : int or bool
         Display (verbosity) level. Set to >0 to print status messages.
     return_all : bool, optional
         Set to True to return a list of the best solution at each of the
@@ -280,3 +282,101 @@ def _minimize_bfgs(
         result['allvecs'] = allvecs
 
     return result
+
+
+def _minimize_bfgs(
+        fun, x0, lr=1., inv_hess=True, max_iter=None,
+        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
+        normp=float('inf'), callback=None, disp=0, return_all=False):
+    """Minimize a multivariate function with BFGS
+
+    Parameters
+    ----------
+    fun : callable
+        Scalar objective function to minimize
+    x0 : Tensor
+        Initialization point
+    lr : float
+        Step size for parameter updates. If using line search, this will be
+        used as the initial step size for the search.
+    inv_hess : bool
+        Whether to parameterize the inverse hessian vs. the hessian with BFGS.
+    max_iter : int, optional
+        Maximum number of iterations to perform. Defaults to 200 * x0.numel()
+    line_search : str
+        Line search specifier. Currently the available options are
+        {'none', 'strong_wolfe'}.
+    gtol : float
+        Termination tolerance on 1st-order optimality (gradient norm).
+    xtol : float
+        Termination tolerance on function/parameter changes.
+    normp : Number or str
+        The norm type to use for termination conditions. Can be any value
+        supported by `torch.norm` p argument.
+    callback : callable, optional
+        Function to call after each iteration with the current parameter
+        state, e.g. callback(x_k).
+    disp : int or bool
+        Display (verbosity) level. Set to >0 to print status messages.
+    return_all : bool, optional
+        Set to True to return a list of the best solution at each of the
+        iterations.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
+    """
+    return _minimize_bfgs_core(
+        fun, x0, lr, low_mem=False, inv_hess=inv_hess, max_iter=max_iter,
+        line_search=line_search, gtol=gtol, xtol=xtol,
+        normp=normp, callback=callback, disp=disp, return_all=return_all)
+
+
+def _minimize_lbfgs(
+        fun, x0, lr=1., history_size=100, max_iter=None,
+        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
+        normp=float('inf'), callback=None, disp=0, return_all=False):
+    """Minimize a multivariate function with L-BFGS
+
+    Parameters
+    ----------
+    fun : callable
+        Scalar objective function to minimize
+    x0 : Tensor
+        Initialization point
+    lr : float
+        Step size for parameter updates. If using line search, this will be
+        used as the initial step size for the search.
+    history_size : int
+        History size for L-BFGS hessian estimates. Ignored if `low_mem=False`.
+    max_iter : int, optional
+        Maximum number of iterations to perform. Defaults to 200 * x0.numel()
+    line_search : str
+        Line search specifier. Currently the available options are
+        {'none', 'strong_wolfe'}.
+    gtol : float
+        Termination tolerance on 1st-order optimality (gradient norm).
+    xtol : float
+        Termination tolerance on function/parameter changes.
+    normp : Number or str
+        The norm type to use for termination conditions. Can be any value
+        supported by `torch.norm` p argument.
+    callback : callable, optional
+        Function to call after each iteration with the current parameter
+        state, e.g. callback(x_k).
+    disp : int or bool
+        Display (verbosity) level. Set to >0 to print status messages.
+    return_all : bool, optional
+        Set to True to return a list of the best solution at each of the
+        iterations.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
+    """
+    return _minimize_bfgs_core(
+        fun, x0, lr, low_mem=True, history_size=history_size,
+        max_iter=max_iter, line_search=line_search, gtol=gtol, xtol=xtol,
+        normp=normp, callback=callback, disp=disp, return_all=return_all)
