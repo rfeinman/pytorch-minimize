@@ -168,6 +168,10 @@ def strong_wolfe(fun, x, t, d, f, g, gtd=None, **kwargs):
     """
     if gtd is None:
         gtd = g.mul(d).sum()
+
+    # use python floats for scalars as per torch.optim.lbfgs
+    f, t = float(f), float(t)
+
     if 'extra_condition' in kwargs:
         f, g, t, ls_nevals = _strong_wolfe_extra(
             fun, x.view(-1), t, d.view(-1), f, g.view(-1), gtd, **kwargs)
@@ -178,6 +182,10 @@ def strong_wolfe(fun, x, t, d, f, g, gtd=None, **kwargs):
         # changes.
         f, g, t, ls_nevals = _strong_wolfe(
             fun, x.view(-1), t, d.view(-1), f, g.view(-1), gtd, **kwargs)
+
+    # convert back to torch scalar
+    f = torch.as_tensor(f, dtype=x.dtype, device=x.device)
+
     return f, g.view_as(x), t, ls_nevals
 
 
