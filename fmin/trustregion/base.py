@@ -13,6 +13,7 @@ from torch._vmap_internals import _vmap
 from torch.linalg import norm
 from scipy.optimize.optimize import OptimizeResult, _status_message
 
+from ..function import ScalarFunction
 
 status_messages = (
     _status_message['success'],
@@ -27,28 +28,14 @@ class BaseQuadraticSubproblem(ABC):
     Base/abstract class defining the quadratic model for trust-region
     minimization. Child classes must implement the ``solve`` method.
     """
-    def __init__(self, x, fun):
+    def __init__(self, x, f_closure):
+        # evaluate closure
+        f, g, hessp, hess = f_closure(x)
+
         self._x = x
-
-        # compute function and jacobian value (with grad enabled)
-        x = x.detach().requires_grad_(True)
-        with torch.enable_grad():
-            f = fun(x)
-            g, = autograd.grad(f, x, create_graph=True)
-
-        # build hessp function or compute hessian matrix
-        if self.hess_prod:
-            h = None
-            hessp = lambda v: autograd.grad(g, x, v, retain_graph=True)[0]
-        else:
-            I = torch.eye(x.numel(), dtype=x.dtype, device=x.device)
-            h = _vmap(lambda v: autograd.grad(g, x, v)[0])(I)
-            hessp = None
-
-        self._f = f.detach()
-        self._g = g.detach()
-        self._h = h
-        self._hessp = hessp
+        self._f = f
+        self._g = g
+        self._h = hessp if self.hess_prod else hess
         self._g_mag = None
         self._cauchy_point = None
         self._newton_point = None
@@ -78,10 +65,13 @@ class BaseQuadraticSubproblem(ABC):
         return self._h
 
     def hessp(self, p):
-        if self.hess_prod:
-            return self._hessp(p)
-        else:
-            return self.hess.mv(p)
+        """Value of Hessian-vector product at current iteration for a
+        particular vector ``p``.
+
+        Note: ``self._h`` is either a Tensor or a LinearOperator. In either
+        case, it has a method ``mv()``.
+        """
+        return self._h.mv(p)
 
     @property
     def jac_mag(self):
@@ -161,21 +151,15 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         raise ValueError('the initial trust radius must be less than the '
                          'max trust radius')
 
-    # force the initial guess into a nice format
-    x0 = torch.as_tensor(x0)
-    xshape = x0.shape
-    x0 = x0.flatten()
-
-    # handle batch inputs
-    fun_ = fun
-    fun = lambda x: fun_(x.view(xshape))
-
-    # limit the number of iterations
+    # Input check/pre-process
+    disp = int(disp)
     if max_iter is None:
         max_iter = x0.numel() * 200
 
-    # convert disp to int
-    disp = int(disp)
+    # Construct scalar objective function
+    hessp = subproblem.hess_prod
+    sf = ScalarFunction(fun, x0.shape, hessp=hessp, hess=not hessp)
+    f_closure = sf.closure
 
     # init the search status
     warnflag = 1  # maximum iterations flag
@@ -184,10 +168,12 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
     # initialize the search
     trust_radius = torch.as_tensor(initial_trust_radius,
                                    dtype=x0.dtype, device=x0.device)
-    x = x0
+    x = x0.detach().flatten()
     if return_all:
         allvecs = [x]
-    m = subproblem(x, fun)
+
+    # initial subproblem
+    m = subproblem(x, f_closure)
 
     # search for the function min
     # do not even start if the gradient is small enough
@@ -212,7 +198,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
 
         # define the local approximation at the proposed point
         x_proposed = x + p
-        m_proposed = subproblem(x_proposed, fun)
+        m_proposed = subproblem(x_proposed, f_closure)
 
         # evaluate the ratio defined in equation (4.4)
         actual_reduction = m.fun - m_proposed.fun
@@ -261,13 +247,13 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         # print("         Gradient evaluations: %d" % sf.ngev)
         # print("         Hessian evaluations: %d" % (sf.nhev + nhessp[0]))
 
-    result = OptimizeResult(x=x.view(xshape), fun=m.fun, jac=m.jac.view(xshape),
+    result = OptimizeResult(x=x.view_as(x0), fun=m.fun, jac=m.jac.view_as(x0),
                             success=(warnflag == 0), status=warnflag,
                             # nfev=sf.nfev, njev=sf.ngev, nhev=sf.nhev+nhessp[0],
                             nit=k, message=status_messages[warnflag])
 
     if not subproblem.hess_prod:
-        result['hess'] = m.hess.view(*xshape, *xshape)
+        result['hess'] = m.hess.view(*x0.shape, *x0.shape)
 
     if return_all:
         result['allvecs'] = allvecs
