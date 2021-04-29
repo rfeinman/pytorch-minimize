@@ -8,6 +8,7 @@ from torch._vmap_internals import _vmap
 __all__ = ['ScalarFunction', 'DirectionalEvaluate']
 
 sf_value = namedtuple('sf_value', ['f', 'grad', 'hessp', 'hess'])
+vf_value = namedtuple('vf_value', ['f', 'jacp', 'jac'])
 
 
 @torch.jit.script
@@ -58,7 +59,7 @@ class ScalarFunction(object):
                  twice_diffable=True):
         if x_shape is not None:
             fun_ = fun
-            fun = lambda x: fun_(x.view(x_shape)).view(-1)
+            fun = lambda x: fun_(x.view(x_shape))
         self._fun = fun
         self._hessp = hessp
         self._hess = hess
@@ -92,7 +93,7 @@ class DirectionalEvaluate(ScalarFunction):
     def __init__(self, fun, x_shape=None):
         if x_shape is not None:
             fun_ = fun
-            fun = lambda x: fun_(x.view(x_shape)).view(-1)
+            fun = lambda x: fun_(x.view(x_shape))
         super().__init__(fun)
 
     def __call__(self, x, t, d):
