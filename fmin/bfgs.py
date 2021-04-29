@@ -184,24 +184,6 @@ def _minimize_bfgs(
     t = min(1., grad.norm(p=1).reciprocal()) * lr
     n_iter = 0
 
-    # termination func
-    def terminate(warnflag, msg):
-        if disp:
-            print(msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % n_iter)
-            print("         Function evaluations: %d" % sf.nfev)
-        result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev,
-                                status=warnflag, success=(warnflag==0),
-                                message=msg, x=x.view_as(x0), nit=n_iter)
-        if return_all:
-            result['allvecs'] = allvecs
-        return result
-
-    # initial convergence check
-    if grad.norm(p=normp) <= gtol:
-        return terminate(0, _status_message['success'])
-
     # BFGS iterations
     for n_iter in range(1, max_iter+1):
 
@@ -217,9 +199,9 @@ def _minimize_bfgs(
 
         # check if directional derivative is below tolerance
         if gtd > -xtol:
+            warnflag = 4
             msg = 'A non-descent direction was encountered.'
-            return terminate(3, msg)
-
+            break
 
         # ======================
         #   update parameter
@@ -244,7 +226,6 @@ def _minimize_bfgs(
         if callback is not None:
             callback(x_new)
 
-
         # ================================
         #   update hessian approximation
         # ================================
@@ -254,14 +235,15 @@ def _minimize_bfgs(
 
         hess.update(s, y)
 
-
         # =========================================
         #   check conditions and update buffers
         # =========================================
 
         # convergence by insufficient progress
         if (s.norm(p=normp) <= xtol) | ((fval_new-fval).abs() <= xtol):
-            return terminate(0, _status_message['success'])
+            warnflag = 0
+            msg = _status_message['success']
+            break
 
         # update state
         fval[...] = fval_new
@@ -271,11 +253,30 @@ def _minimize_bfgs(
 
         # convergence by 1st-order optimality
         if grad.norm(p=normp) <= gtol:
-            return terminate(0, _status_message['success'])
+            warnflag = 0
+            msg = _status_message['success']
+            break
 
         # precision loss; exit
         if ~fval.isfinite():
-            return terminate(2, _status_message['pr_loss'])
+            warnflag = 2
+            msg = _status_message['pr_loss']
+            break
 
-    # if we get to the end, the maximum num. iterations was reached
-    return terminate(1, "Warning: " + _status_message['maxiter'])
+    else:
+        # if we get to the end, the maximum num. iterations was reached
+        warnflag = 1
+        msg = _status_message['maxiter']
+
+    if disp:
+        print(msg)
+        print("         Current function value: %f" % fval)
+        print("         Iterations: %d" % n_iter)
+        print("         Function evaluations: %d" % sf.nfev)
+    result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev,
+                            status=warnflag, success=(warnflag==0),
+                            message=msg, x=x.view_as(x0), nit=n_iter)
+    if return_all:
+        result['allvecs'] = allvecs
+
+    return result

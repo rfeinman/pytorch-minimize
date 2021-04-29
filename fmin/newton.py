@@ -127,28 +127,12 @@ def _minimize_newton_cg(
     # initial settings
     x = x0.detach().clone(memory_format=torch.contiguous_format)
     fval, grad, hessp, _ = f_closure(x)
+    if disp > 1:
+        print('initial fval: %0.4f' % fval)
     if return_all:
         allvecs = [x]
     ncg = 0   # number of cg iterations
     n_iter = 0
-
-    if disp > 1:
-        print('initial fval: %0.4f' % fval)
-
-    def terminate(warnflag, msg):
-        if disp:
-            print(msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % n_iter)
-            print("         Function evaluations: %d" % sf.nfev)
-            print("         CG iterations: %d" % ncg)
-        result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev, ncg=ncg,
-                                status=warnflag, success=(warnflag==0),
-                                message=msg, x=x, nit=n_iter)
-        if return_all:
-            result['allvecs'] = allvecs
-        return result
-
 
     # begin optimization loop
     for n_iter in range(1, max_iter + 1):
@@ -163,8 +147,9 @@ def _minimize_newton_cg(
         ncg += cg_iters
 
         if cg_fail:
-            return terminate(3, _status_message['cg_warn'])
-
+            warnflag = 3
+            msg = _status_message['cg_warn']
+            break
 
         # =====================================================
         #  Perform variable update (with optional line search)
@@ -192,19 +177,37 @@ def _minimize_newton_cg(
         if return_all:
             allvecs.append(x)
 
-
         # ==========================
         #  check for convergence
         # ==========================
 
         if update.norm(p=normp) <= xtol:
-            return terminate(0, _status_message['success'])
+            warnflag = 0
+            msg = _status_message['success']
+            break
 
         if not fval.isfinite():
-            return terminate(3, _status_message['nan'])
+            warnflag = 3
+            msg = _status_message['nan']
+            break
 
-    # if we get to the end, the maximum num. iterations was reached
-    return terminate(1, "Warning: " + _status_message['maxiter'])
+    else:
+        # if we get to the end, the maximum num. iterations was reached
+        warnflag = 1
+        msg = _status_message['maxiter']
+
+    if disp:
+        print(msg)
+        print("         Current function value: %f" % fval)
+        print("         Iterations: %d" % n_iter)
+        print("         Function evaluations: %d" % sf.nfev)
+        print("         CG iterations: %d" % ncg)
+    result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev, ncg=ncg,
+                            status=warnflag, success=(warnflag==0),
+                            message=msg, x=x, nit=n_iter)
+    if return_all:
+        result['allvecs'] = allvecs
+    return result
 
 
 
@@ -288,21 +291,6 @@ def _minimize_newton_exact(
     nfail = 0
     n_iter = 0
 
-
-    def terminate(warnflag, msg):
-        if disp:
-            print(msg)
-            print("         Current function value: %f" % fval)
-            print("         Iterations: %d" % n_iter)
-            print("         Function evaluations: %d" % sf.nfev)
-        result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev, nfail=nfail,
-                                status=warnflag, success=(warnflag==0),
-                                message=msg, x=x.view_as(x0), nit=n_iter)
-        if return_all:
-            result['allvecs'] = allvecs
-        return result
-
-
     # begin optimization loop
     for n_iter in range(1, max_iter + 1):
 
@@ -371,10 +359,28 @@ def _minimize_newton_exact(
         # ==========================
 
         if update.norm(p=normp) <= xtol:
-            return terminate(0, _status_message['success'])
+            warnflag = 0
+            msg = _status_message['success']
+            break
 
         if not fval.isfinite():
-            return terminate(3, _status_message['nan'])
+            warnflag = 3
+            msg = _status_message['nan']
+            break
 
-    # if we get to the end, the maximum num. iterations was reached
-    return terminate(1, "Warning: " + _status_message['maxiter'])
+    else:
+        # if we get to the end, the maximum num. iterations was reached
+        warnflag = 1
+        msg = _status_message['maxiter']
+
+    if disp:
+        print(msg)
+        print("         Current function value: %f" % fval)
+        print("         Iterations: %d" % n_iter)
+        print("         Function evaluations: %d" % sf.nfev)
+    result = OptimizeResult(fun=fval, jac=grad, nfev=sf.nfev, nfail=nfail,
+                            status=warnflag, success=(warnflag==0),
+                            message=msg, x=x.view_as(x0), nit=n_iter)
+    if return_all:
+        result['allvecs'] = allvecs
+    return result
