@@ -8,8 +8,6 @@ All rights reserved.
 """
 from abc import ABC, abstractmethod
 import torch
-import torch.autograd as autograd
-from torch._vmap_internals import _vmap
 from torch.linalg import norm
 from scipy.optimize.optimize import OptimizeResult, _status_message
 
