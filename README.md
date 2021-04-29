@@ -21,7 +21,7 @@ def rosen(x):
 x0 = torch.tensor([1., 8.])
 
 # Select from the following methods:
-#  ['bfgs', 'l-bfgs', 'newton-cg', 'newton-exact', 
+#  ['bfgs', 'l-bfgs', 'cg', 'newton-cg', 'newton-exact', 
 #   'trust-ncg', 'trust-exact', 'dogleg']
 
 # BFGS
@@ -34,7 +34,7 @@ result = minimize(rosen, x0, method='newton-cg')
 result = minimize(rosen, x0, method='newton-exact')
 ```
 
-__Solvers:__ BFGS, L-BFGS, Newton Conjugate Gradient (NCG), Newton Exact, Dogleg, Trust-Region Exact, Trust-Region NCG
+__Solvers:__ BFGS, L-BFGS, Conjugate Gradient (CG), Newton Conjugate Gradient (NCG), Newton Exact, Dogleg, Trust-Region Exact, Trust-Region NCG
 
 __Examples:__ See the [Rosenbrock minimization notebook](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/rosen_minimize.ipynb) for a demonstration of function minimization with a handful of different algorithms.
 
@@ -62,6 +62,8 @@ The pytorch-minimize library includes solvers for general-purpose function minim
 The following solvers are available for _unconstrained_ minimization:
 
 - __BFGS/L-BFGS.__ BFGS is a cannonical quasi-Newton method for unconstrained optimization. I've implemented both the standard BFGS and the "limited memory" L-BFGS. For smaller scale problems where memory is not a concern, BFGS should be significantly faster than L-BFGS (especially on CUDA) since it avoids Python for loops and instead uses pure torch.
+
+- __Conjugate Gradient (CG).__ The conjugate gradient algorithm is a generalization of linear conjugate gradient to nonlinear optimization problems. Pytorch-minimize includes an implementation of the Polak-Ribiére CG algorithm described in Nocedal & Wright (2006) chapter 5.2.
    
 - __Newton Conjugate Gradient (NCG).__ The Newton-Raphson method is a staple of unconstrained optimization. Although computing full Hessian matrices with PyTorch's reverse-mode automatic differentiation can be costly, computing Hessian-vector products is cheap, and it also saves a lot of memory. The Conjugate Gradient (CG) variant of Newton's method is an effective solution for unconstrained minimization with Hessian-vector products. I've implemented a lightweight NewtonCG minimizer that uses HVP for the linear inverse sub-problems.
 
