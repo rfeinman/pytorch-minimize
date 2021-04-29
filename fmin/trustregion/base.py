@@ -243,14 +243,13 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         print(msg)
         print("         Current function value: %f" % m.fun)
         print("         Iterations: %d" % k)
-        # print("         Function evaluations: %d" % sf.nfev)
+        print("         Function evaluations: %d" % sf.nfev)
         # print("         Gradient evaluations: %d" % sf.ngev)
         # print("         Hessian evaluations: %d" % (sf.nhev + nhessp[0]))
 
     result = OptimizeResult(x=x.view_as(x0), fun=m.fun, jac=m.jac.view_as(x0),
                             success=(warnflag == 0), status=warnflag,
-                            # nfev=sf.nfev, njev=sf.ngev, nhev=sf.nhev+nhessp[0],
-                            nit=k, message=status_messages[warnflag])
+                            nfev=sf.nfev, nit=k, message=status_messages[warnflag])
 
     if not subproblem.hess_prod:
         result['hess'] = m.hess.view(*x0.shape, *x0.shape)
