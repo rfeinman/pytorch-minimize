@@ -1,10 +1,12 @@
-import warnings
 import torch
 from scipy.optimize import OptimizeResult
 from scipy.optimize.optimize import _status_message
 
 from .function import ScalarFunction
 from .line_search import strong_wolfe
+
+
+dot = lambda u,v: torch.dot(u.view(-1), v.view(-1))
 
 
 @torch.no_grad()
@@ -60,13 +62,15 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
 
     for niter in range(1, max_iter + 1):
         # delta/gtd
-        delta = g.dot(g)
-        gtd = g.dot(d)
+        delta = dot(g, g)
+        gtd = dot(g, d)
 
         # compute initial step guess based on (f - old_f) / gtd
         t0 = torch.clamp(2.02 * (f - old_f) / gtd, max=1.0)
         if t0 <= 0:
-            warnings.warn('initial step guess is negative.')
+            warnflag = 4
+            msg = 'Initial step guess is negative.'
+            break
         old_f = f
 
         # buffer to store next direction vector
@@ -74,7 +78,7 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
 
         def polak_ribiere_powell_step(t, g_next):
             y = g_next - g
-            beta = torch.clamp(y.dot(g_next) / delta, min=0)
+            beta = torch.clamp(dot(y, g_next) / delta, min=0)
             d_next = -g_next + d.mul(beta)
             torch.norm(g_next, p=normp, out=grad_norm)
             return t, d_next
@@ -89,7 +93,7 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
             cond1 = grad_norm <= gtol
 
             # Accept step if sufficient descent condition applies.
-            cond2 = d_next.dot(g_next) <= -0.01 * g_next.dot(g_next)
+            cond2 = dot(d_next, g_next) <= -0.01 * dot(g_next, g_next)
 
             return cond1 | cond2
 
