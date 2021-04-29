@@ -162,9 +162,9 @@ def _minimize_bfgs(
         raise ValueError('inv_hess=False is not available for L-BFGS.')
 
     # construct scalar objective function
-    f_closure = ScalarFunction(f, x_shape=x0.shape)
+    f_closure = ScalarFunction(f, x0.shape)
     if line_search == 'strong-wolfe':
-        dir_evaluate = DirectionalEvaluate(f, x_shape=x0.shape)
+        dir_evaluate = DirectionalEvaluate(f, x0.shape)
 
     # compute initial f(x) and f'(x)
     x = x0.detach().view(-1).clone(memory_format=torch.contiguous_format)

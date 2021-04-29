@@ -55,17 +55,20 @@ class JacobianLinearOperator(object):
 
 
 class ScalarFunction(object):
-    def __init__(self, fun, x_shape=None, hessp=False, hess=False,
+    def __init__(self, fun, x_shape, hessp=False, hess=False,
                  twice_diffable=True):
-        if x_shape is not None:
-            fun_ = fun
-            fun = lambda x: fun_(x.view(x_shape))
-        self._fun = fun
+        self.__fun = fun
+        self._x_shape = x_shape
         self._hessp = hessp
         self._hess = hess
         self._I = None
         self._twice_diffable = twice_diffable
         self.nfev = 0
+
+    def _fun(self, x):
+        if x.shape != self._x_shape:
+            x = x.view(self._x_shape)
+        return self.__fun(x)
 
     def __call__(self, x):
         self.nfev += 1
@@ -90,11 +93,8 @@ class ScalarFunction(object):
 
 
 class DirectionalEvaluate(ScalarFunction):
-    def __init__(self, fun, x_shape=None):
-        if x_shape is not None:
-            fun_ = fun
-            fun = lambda x: fun_(x.view(x_shape))
-        super().__init__(fun)
+    def __init__(self, fun, x_shape):
+        super().__init__(fun, x_shape)
 
     def __call__(self, x, t, d):
         x = x + t * d
