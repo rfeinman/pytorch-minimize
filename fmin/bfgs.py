@@ -216,9 +216,9 @@ def _minimize_bfgs(
         gtd = grad.dot(d)
 
         # check if directional derivative is below tolerance
-        # TODO: is this a success?
         if gtd > -xtol:
-            return terminate(0, _status_message['success'])
+            msg = 'A non-descent direction was encountered.'
+            return terminate(3, msg)
 
 
         # ======================
