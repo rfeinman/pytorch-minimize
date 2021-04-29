@@ -10,8 +10,10 @@ from .line_search import strong_wolfe
 @torch.no_grad()
 def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
                  callback=None, disp=0, return_all=False):
-    """Minimize a scalar function of one or more variables using the
-    conjugate gradient algorithm.
+    """Minimize a scalar function of one or more variables using
+    nonlinear conjugate gradient.
+
+    The algorithm is described in Nocedal & Wright (2006) chapter 5.2.
 
     Parameters
     ----------
