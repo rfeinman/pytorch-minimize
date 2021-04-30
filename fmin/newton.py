@@ -240,7 +240,7 @@ def _minimize_newton_exact(
     xtol : float
         Average relative error in solution `xopt` acceptable for
         convergence.
-    normp : int | float | str
+    normp : Number or str
         The norm type to use for termination conditions. Can be any value
         supported by `torch.norm` p argument.
     tikhonov : float
@@ -248,14 +248,15 @@ def _minimize_newton_exact(
     handle_npd : str
         Mode for handling non-positive definite hessian matrices. Can be one
         of the following:
-            'grad' : use steepest descent direction (gradient)
-            'lu' : solve the inverse hessian with LU factorization
-            'eig' : use symmetric eigendecomposition to determine a
-                    diagonal regularization parameter
+        
+            * 'grad' : use steepest descent direction (gradient)
+            * 'lu' : solve the inverse hessian with LU factorization
+            * 'eig' : use symmetric eigendecomposition to determine a
+                diagonal regularization parameter
     callback : callable, optional
         Function to call after each iteration with the current parameter
         state, e.g. callback(x_k)
-    disp : int | bool
+    disp : int or bool
         Display (verbosity) level. Set to >0 to print status messages.
     return_all : bool
         Set to True to return a list of the best solution at each of the

@@ -18,8 +18,12 @@ def _minimize_trust_ncg(
     Minimization of scalar function of one or more variables using
     the Newton conjugate gradient trust-region algorithm.
 
-    Options
-    -------
+    Parameters
+    ----------
+    fun : callable
+        Scalar objective function to minimize
+    x0 : Tensor
+        Initialization point
     initial_trust_radius : float
         Initial trust-region radius.
     max_trust_radius : float
@@ -30,6 +34,11 @@ def _minimize_trust_ncg(
     gtol : float
         Gradient norm must be less than `gtol` before successful
         termination.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
     """
     return _minimize_trust_region(fun, x0,
                                   subproblem=CGSteihaugSubproblem,
