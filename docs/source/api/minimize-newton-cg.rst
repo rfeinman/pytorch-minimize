@@ -1,4 +1,4 @@
 minimize(method='newton-cg')
 ----------------------------------------
 
-.. autofunction:: fmin.newton._minimize_newton_cg
+.. autofunction:: torchmin.newton._minimize_newton_cg

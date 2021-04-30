@@ -1,4 +1,4 @@
 minimize(method='trust-ncg')
 ----------------------------------------
 
-.. autofunction:: fmin.trustregion._minimize_trust_ncg
+.. autofunction:: torchmin.trustregion._minimize_trust_ncg

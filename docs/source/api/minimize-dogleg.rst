@@ -1,4 +1,4 @@
 minimize(method='dogleg')
 ----------------------------------------
 
-.. autofunction:: fmin.trustregion._minimize_dogleg
+.. autofunction:: torchmin.trustregion._minimize_dogleg

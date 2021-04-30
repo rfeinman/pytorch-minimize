@@ -1,4 +1,4 @@
 minimize(method='l-bfgs')
 ----------------------------------------
 
-.. autofunction:: fmin.bfgs._minimize_lbfgs
+.. autofunction:: torchmin.bfgs._minimize_lbfgs

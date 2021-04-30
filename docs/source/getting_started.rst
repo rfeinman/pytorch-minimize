@@ -13,10 +13,10 @@ Next, add the selected folder path to your `PYTHONPATH` environment variable as 
 
     export PYTHONPATH="/path/to/pytorch-minimize:$PYTHONPATH"
 
-Once these steps have been completed, you should be able to make inports such as ``from fmin import minimize`` from any location on your machine.
+Once these steps have been completed, you should be able to make inports such as ``from torchmin import minimize`` from any location on your machine.
 
 
-.. currentmodule:: fmin
+.. currentmodule:: torchmin
 
 Using the :func:`minimize` function
 ------------------------------------

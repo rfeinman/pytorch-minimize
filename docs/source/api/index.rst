@@ -2,7 +2,7 @@
 API Documentation
 =================
 
-.. currentmodule:: fmin
+.. currentmodule:: torchmin
 
 
 Functional API

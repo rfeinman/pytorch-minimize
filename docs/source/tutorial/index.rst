@@ -8,8 +8,8 @@ Unconstrained minimization
 
 .. code-block:: python
 
-    from fmin import minimize
-    from fmin.benchmarks import rosen
+    from torchmin import minimize
+    from torchmin.benchmarks import rosen
 
     # initial point
     x0 = torch.randn(100, device='cpu')
