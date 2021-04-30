@@ -1,4 +1,4 @@
-pytorch-minimize
+Pytorch-minimize
 ================
 
 Pytorch-minimize is a library for numerical optimization with automatic differentiation and GPU acceleration. It implements a number of canonical techniques for deterministic (or "full-batch") optimization not offered in the :mod:`torch.optim` module. The library is inspired heavily by SciPy's :mod:`optimize` module and MATLAB's `Optimization Toolbox <https://www.mathworks.com/products/optimization.html>`_. Unlike SciPy and MATLAB, which use numerical approximations of derivatives that are slow and often inaccurate, pytorch-minimize uses *real* first- and second-order derivatives, computed seamlessly behind the scenes with autograd. Both CPU and CUDA are supported.
