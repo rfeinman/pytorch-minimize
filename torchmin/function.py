@@ -69,7 +69,7 @@ class ScalarFunction(object):
     """
     def __init__(self, fun, x_shape, hessp=False, hess=False,
                  twice_diffable=True):
-        self.__fun = fun
+        self._fun = fun
         self._x_shape = x_shape
         self._hessp = hessp
         self._hess = hess
@@ -77,10 +77,10 @@ class ScalarFunction(object):
         self._twice_diffable = twice_diffable
         self.nfev = 0
 
-    def _fun(self, x):
+    def fun(self, x):
         if x.shape != self._x_shape:
             x = x.view(self._x_shape)
-        f = self.__fun(x)
+        f = self._fun(x)
         if f.numel() != 1:
             raise RuntimeError('ScalarFunction was supplied a function '
                                'that does not return scalar outputs.')
@@ -96,7 +96,7 @@ class ScalarFunction(object):
         """
         x = x.detach().requires_grad_(True)
         with torch.enable_grad():
-            f = self._fun(x)
+            f = self.fun(x)
             grad = autograd.grad(f, x, create_graph=self._hessp or self._hess)[0]
         hessp = None
         hess = None
@@ -120,7 +120,7 @@ class ScalarFunction(object):
         x = x + d.mul(t)
         x = x.detach().requires_grad_(True)
         with torch.enable_grad():
-            f = self._fun(x)
+            f = self.fun(x)
         grad = autograd.grad(f, x)[0]
 
         return de_value(f=float(f), grad=grad)
@@ -129,17 +129,17 @@ class ScalarFunction(object):
 class VectorFunction(object):
     """Vector-valued objective function with autograd backend."""
     def __init__(self, fun, x_shape, jacp=False, jac=False):
-        self.__fun = fun
+        self._fun = fun
         self._x_shape = x_shape
         self._jacp = jacp
         self._jac = jac
         self._I = None
         self.nfev = 0
 
-    def _fun(self, x):
+    def fun(self, x):
         if x.shape != self._x_shape:
             x = x.view(self._x_shape)
-        f = self.__fun(x)
+        f = self._fun(x)
         if f.dim() == 0:
             raise RuntimeError('VectorFunction expected vector outputs but '
                                'received a scalar.')
@@ -152,7 +152,7 @@ class VectorFunction(object):
     def closure(self, x):
         x = x.detach().requires_grad_(True)
         with torch.enable_grad():
-            f = self._fun(x)
+            f = self.fun(x)
         jacp = None
         jac = None
         if self._jacp:
