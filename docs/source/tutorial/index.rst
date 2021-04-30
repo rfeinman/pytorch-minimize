@@ -1,6 +1,8 @@
 Tutorial
 =========
 
+This page is a placeholder. The tutorial site will be coming soon.
+
 Unconstrained minimization
 ---------------------------
 

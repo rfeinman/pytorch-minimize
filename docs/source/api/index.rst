@@ -29,8 +29,11 @@ The :func:`minimize` function is a general utility for *unconstrained* minimizat
     minimize-bfgs
     minimize-lbfgs
     minimize-cg
-
-Each method... (to do)
+    minimize-newton-cg
+    minimize-newton-exact
+    minimize-dogleg
+    minimize-trust-ncg
+    minimize-trust-exact
 
 
 Constrained minimization

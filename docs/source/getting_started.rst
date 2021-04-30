@@ -21,4 +21,4 @@ Once these steps have been completed, you should be able to make inports such as
 Using the :func:`minimize` function
 ------------------------------------
 
-To do.
+Coming soon.
