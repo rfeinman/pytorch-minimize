@@ -12,8 +12,8 @@ are far more limited.
 
 """
 import torch
-from fmin import minimize
-from fmin.benchmarks import rosen
+from torchmin import minimize
+from torchmin.benchmarks import rosen
 from scipy import optimize
 
 # Many scipy optimizers convert the data to double-precision, so

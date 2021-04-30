@@ -11,7 +11,7 @@ __At a glance:__
 
 ```python
 import torch
-from fmin import minimize
+from torchmin import minimize
 
 def rosen(x):
     return torch.sum(100*(x[..., 1:] - x[..., :-1]**2)**2 
@@ -77,7 +77,7 @@ The following solvers are available for _unconstrained_ minimization:
 
 To access the unconstrained minimizer interface, use the following import statement:
 
-    from fmin import minimize
+    from torchmin import minimize
 
 Use the argument `method` to specify which of the afformentioned solvers should be applied.
 
@@ -85,11 +85,11 @@ Use the argument `method` to specify which of the afformentioned solvers should 
 
 The following solvers are available for _constrained_ minimization:
 
-- __Trust-Region Constrained Algorithm.__ Pytorch-minimize includes a single constrained minimization routine based on SciPy's `trust-constr` method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed, the trust-region interior point method is used. NOTE: The current trust-region constrained minimizer is not a custom implementation, but rather a wrapper for SciPy's `optimize.minimize` routine. It uses autograd behind the scenes to build jacobian & hessian callables before invoking scipy. Inputs and objectivs should use torch tensors like other pytorch-minimize routines. CUDA is supported but not recommended; data will be moved back-and-forth between GPU/CPU. 
+- __Trust-Region Constrained Algorithm.__ Pytorch-minimize includes a single constrained minimization routine based on SciPy's 'trust-constr' method. The algorithm accepts generalized nonlinear constraints and variable boundries via the "constr" and "bounds" arguments. For equality constrained problems, it is an implementation of the Byrd-Omojokun Trust-Region SQP method. When inequality constraints are imposed, the trust-region interior point method is used. NOTE: The current trust-region constrained minimizer is not a custom implementation, but rather a wrapper for SciPy's `optimize.minimize` routine. It uses autograd behind the scenes to build jacobian & hessian callables before invoking scipy. Inputs and objectivs should use torch tensors like other pytorch-minimize routines. CUDA is supported but not recommended; data will be moved back-and-forth between GPU/CPU. 
    
 To access the constrained minimizer interface, use the following import statement:
 
-    from fmin import minimize_constr
+    from torchmin import minimize_constr
 
 ### 3. Nonlinear Least Squares
 
@@ -97,7 +97,7 @@ The library also includes specialized solvers for nonlinear least squares proble
 These solvers revolve around the Gauss-Newton method, a modification of Newton's method tailored to the lstsq setting. 
 The least squares interface can be imported as follows:
 
-    from fmin import least_squares
+    from torchmin import least_squares
 
 The least_squares function is heavily motivated by scipy's `optimize.least_squares`. 
 Much of the scipy code was borrowed directly (all rights reserved) and ported from numpy to torch. 
@@ -119,6 +119,6 @@ For constrained optimization, the [adversarial examples tutorial](https://github
 Coming soon there will be a new, alternative API revolving around the `torch.optim.Optimizer` class. 
 An early prototype can be accessed as follows:
 
-    from fmin import Minimizer
+    from torchmin import Minimizer
 
 It has not been rigorously tested, and documentation is currently limited.
