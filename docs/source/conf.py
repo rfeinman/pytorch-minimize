@@ -92,10 +92,6 @@ html_static_path = ['_static']
 
 # ==== Customizations ====
 
-html_theme_options = {
-    'includehidden': False
-}
-
 # Called automatically by Sphinx, making this `conf.py` an "extension".
 def setup(app):
     # at the moment, we use custom.css to specify a maximum with for tables,

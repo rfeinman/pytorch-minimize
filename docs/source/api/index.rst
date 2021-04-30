@@ -24,7 +24,6 @@ numerical optimization problems.
 The :func:`minimize` function is a general utility for *unconstrained* minimization. It implements a number of different routines based on Newton and Quasi-Newton methods for numerical optimization. The following methods are supported, accessed via the `method` argument:
 
 .. toctree::
-    :hidden:
 
     minimize-bfgs
     minimize-lbfgs
