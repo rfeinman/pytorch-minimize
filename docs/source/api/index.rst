@@ -14,8 +14,7 @@ There are 3 core utilities in the functional API, designed for 3 unique
 numerical optimization problems.
 
 
-Unconstrained minimization
-------------------------------
+**Unconstrained minimization**
 
 .. autosummary::
     :toctree: generated
@@ -25,6 +24,7 @@ Unconstrained minimization
 The :func:`minimize` function is a general utility for *unconstrained* minimization. It implements a number of different routines based on Newton and Quasi-Newton methods for numerical optimization. The following methods are supported, accessed via the `method` argument:
 
 .. toctree::
+    :hidden:
 
     minimize-bfgs
     minimize-lbfgs
@@ -36,8 +36,7 @@ The :func:`minimize` function is a general utility for *unconstrained* minimizat
     minimize-trust-exact
 
 
-Constrained minimization
-----------------------------
+**Constrained minimization**
 
 .. autosummary::
     :toctree: generated
@@ -50,8 +49,7 @@ The :func:`minimize_constr` function is a general utility for *constrained* mini
     The :func:`minimize_constr` function is currently in early beta. Unlike :func:`minimize`--which uses custom, pure PyTorch backend--the constrained solver is a wrapper for SciPy's 'trust-constr' minimization method. CUDA tensors are supported, but CUDA will only be used for function and gradient evaluation, with the remaining solver computations performed on CPU (with numpy arrays).
 
 
-Nonlinear least-squares
----------------------------
+**Nonlinear least-squares**
 
 .. autosummary::
     :toctree: generated
