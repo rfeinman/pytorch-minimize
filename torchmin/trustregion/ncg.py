@@ -14,16 +14,15 @@ from .base import _minimize_trust_region, BaseQuadraticSubproblem
 
 def _minimize_trust_ncg(
         fun, x0, **trust_region_options):
-    """
-    Minimization of scalar function of one or more variables using
+    """Minimization of scalar function of one or more variables using
     the Newton conjugate gradient trust-region algorithm.
 
     Parameters
     ----------
     fun : callable
-        Scalar objective function to minimize
+        Scalar objective function to minimize.
     x0 : Tensor
-        Initialization point
+        Initialization point.
     initial_trust_radius : float
         Initial trust-region radius.
     max_trust_radius : float
@@ -32,7 +31,7 @@ def _minimize_trust_ncg(
     eta : float
         Trust region related acceptance stringency for proposed steps.
     gtol : float
-        Gradient norm must be less than `gtol` before successful
+        Gradient norm must be less than ``gtol`` before successful
         termination.
 
     Returns

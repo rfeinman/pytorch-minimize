@@ -65,25 +65,25 @@ def _minimize_newton_cg(
         fun, x0, lr=1., max_iter=None, cg_max_iter=None,
         twice_diffable=True, line_search='strong-wolfe', xtol=1e-5,
         normp=1, callback=None, disp=0, return_all=False):
-    """
-    Minimize a scalar function of one or more variables using the
+    """Minimize a scalar function of one or more variables using the
     Newton-Raphson method, with Conjugate Gradient for the linear inverse
     sub-problem.
 
     Parameters
     ----------
     fun : callable
-        Scalar objective function to minimize
+        Scalar objective function to minimize.
     x0 : Tensor
-        Initialization point
+        Initialization point.
     lr : float
         Step size for parameter updates. If using line search, this will be
         used as the initial step size for the search.
     max_iter : int, optional
-        Maximum number of iterations to perform. Defaults to 200 * x0.numel()
+        Maximum number of iterations to perform. Defaults to
+        ``200 * x0.numel()``.
     cg_max_iter : int, optional
         Maximum number of iterations for CG subproblem. Recommended to
-        leave this at the default of 20 * x0.numel()
+        leave this at the default of ``20 * x0.numel()``.
     twice_diffable : bool
         Whether to assume the function is twice continuously differentiable.
         If True, hessian-vector products will be much faster.
@@ -93,13 +93,13 @@ def _minimize_newton_cg(
     xtol : float
         Average relative error in solution `xopt` acceptable for
         convergence.
-    normp : int | float | str
+    normp : Number or str
         The norm type to use for termination conditions. Can be any value
-        supported by `torch.norm` p argument.
+        supported by :func:`torch.norm`.
     callback : callable, optional
         Function to call after each iteration with the current parameter
-        state, e.g. callback(x_k)
-    disp : int | bool
+        state, e.g. ``callback(x)``.
+    disp : int or bool
         Display (verbosity) level. Set to >0 to print status messages.
     return_all : bool
         Set to True to return a list of the best solution at each of the
@@ -215,25 +215,24 @@ def _minimize_newton_exact(
         fun, x0, lr=1., max_iter=None, line_search='strong-wolfe', xtol=1e-5,
         normp=1, tikhonov=0., handle_npd='grad', callback=None, disp=0,
         return_all=False):
-    """
-    Minimize a scalar function of one or more variables using the
+    """Minimize a scalar function of one or more variables using the
     Newton-Raphson method.
 
     This variant uses an "exact" Newton routine based on Cholesky factorization
-    of the explicit Hessian matrix. In general it will be less efficient than
-    NewtonCG, and less robust to non-PD Hessians.
+    of the explicit Hessian matrix.
 
     Parameters
     ----------
     fun : callable
-        Scalar objective function to minimize
+        Scalar objective function to minimize.
     x0 : Tensor
-        Initialization point
+        Initialization point.
     lr : float
         Step size for parameter updates. If using line search, this will be
         used as the initial step size for the search.
     max_iter : int, optional
-        Maximum number of iterations to perform. Defaults to 200 * x0.numel()
+        Maximum number of iterations to perform. Defaults to
+        ``200 * x0.numel()``.
     line_search : str
         Line search specifier. Currently the available options are
         {'none', 'strong_wolfe'}.
@@ -242,7 +241,7 @@ def _minimize_newton_exact(
         convergence.
     normp : Number or str
         The norm type to use for termination conditions. Can be any value
-        supported by `torch.norm` p argument.
+        supported by :func:`torch.norm`.
     tikhonov : float
         Optional diagonal regularization (Tikhonov) parameter for the Hessian.
     handle_npd : str
@@ -252,10 +251,10 @@ def _minimize_newton_exact(
             * 'grad' : use steepest descent direction (gradient)
             * 'lu' : solve the inverse hessian with LU factorization
             * 'eig' : use symmetric eigendecomposition to determine a
-                diagonal regularization parameter
+              diagonal regularization parameter
     callback : callable, optional
         Function to call after each iteration with the current parameter
-        state, e.g. callback(x_k)
+        state, e.g. ``callback(x)``.
     disp : int or bool
         Display (verbosity) level. Set to >0 to print status messages.
     return_all : bool

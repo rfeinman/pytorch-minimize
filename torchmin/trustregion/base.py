@@ -24,7 +24,8 @@ status_messages = (
 class BaseQuadraticSubproblem(ABC):
     """
     Base/abstract class defining the quadratic model for trust-region
-    minimization. Child classes must implement the ``solve`` method.
+    minimization. Child classes must implement the ``solve`` method and
+    ``hess_prod`` property.
     """
     def __init__(self, x, closure):
         # evaluate closure
@@ -133,7 +134,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         disp : bool
             If True, print convergence message.
 
-    This function is called by the `minimize` function.
+    This function is called by :func:`torchmin.minimize`.
     It is not supposed to be called directly.
     """
     if subproblem is None:

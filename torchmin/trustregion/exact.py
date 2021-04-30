@@ -14,16 +14,15 @@ from .base import _minimize_trust_region, BaseQuadraticSubproblem
 
 
 def _minimize_trust_exact(fun, x0, **trust_region_options):
-    """
-    Minimization of scalar function of one or more variables using
+    """Minimization of scalar function of one or more variables using
     a nearly exact trust-region algorithm.
 
     Parameters
     ----------
     fun : callable
-        Scalar objective function to minimize
+        Scalar objective function to minimize.
     x0 : Tensor
-        Initialization point
+        Initialization point.
     initial_tr_radius : float
         Initial trust-region radius.
     max_tr_radius : float

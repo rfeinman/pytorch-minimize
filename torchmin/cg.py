@@ -20,19 +20,20 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
     Parameters
     ----------
     fun : callable
-        Scalar objective function to minimize
+        Scalar objective function to minimize.
     x0 : Tensor
-        Initialization point
+        Initialization point.
     max_iter : int
-        Maximum number of iterations to perform. Defaults to 200 * x0.numel()
+        Maximum number of iterations to perform. Defaults to
+        ``200 * x0.numel()``.
     gtol : float
-        Termination tolerance on 1st-order optimality (gradient magnitude)
+        Termination tolerance on 1st-order optimality (gradient norm).
     normp : float
         The norm type to use for termination conditions. Can be any value
-        supported by ``torch.norm``.
+        supported by :func:`torch.norm`.
     callback : callable, optional
         Function to call after each iteration with the current parameter
-        state, e.g. callback(x_k)
+        state, e.g. ``callback(x)``
     disp : int or bool
         Display (verbosity) level. Set to >0 to print status messages.
     return_all : bool, optional
