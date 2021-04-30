@@ -248,7 +248,7 @@ def _minimize_newton_exact(
     handle_npd : str
         Mode for handling non-positive definite hessian matrices. Can be one
         of the following:
-        
+
             * 'grad' : use steepest descent direction (gradient)
             * 'lu' : solve the inverse hessian with LU factorization
             * 'eig' : use symmetric eigendecomposition to determine a

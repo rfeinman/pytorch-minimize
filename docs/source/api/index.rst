@@ -60,11 +60,9 @@ Nonlinear least-squares
 
 The :func:`least_squares` function is a specialized utility for nonlinear least-squares minimization problems. Algorithms for least-squares revolve around the Gauss-Newton method, a modification of Newton's method tailored to residual sum-of-squares (RSS) optimization. The following methods are currently supported:
 
-- Trust-region reflective (exact)
-- Trust-region reflective (lsmr)
-- Dogleg (?)
-- Gauss-Newton line search (exact)
-- Gauss-Newton line search (lsmr)
+- Trust-region reflective
+- Dogleg - COMING SOON
+- Gauss-Newton line search - COMING SOON
 
 
 
