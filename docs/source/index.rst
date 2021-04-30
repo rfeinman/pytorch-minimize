@@ -17,14 +17,19 @@ Table of Contents
 .. toctree::
     :maxdepth: 2
 
-    getting_started
+    install
 
 .. toctree::
     :maxdepth: 2
 
-    tutorial/index
+    user_guide/index
 
 .. toctree::
     :maxdepth: 2
 
     api/index
+
+.. toctree::
+    :maxdepth: 2
+
+    tutorial/index

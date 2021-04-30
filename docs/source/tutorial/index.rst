@@ -1,7 +1,7 @@
-Tutorial
+Examples
 =========
 
-This page is a placeholder. The tutorial site will be coming soon.
+This page is a placeholder. The Examples site will be coming soon.
 
 Unconstrained minimization
 ---------------------------
