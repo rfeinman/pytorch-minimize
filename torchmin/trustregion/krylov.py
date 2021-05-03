@@ -43,7 +43,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         self.k_hard = k_hard
         self.tol = tol
         self.ortho = ortho
-        self.nlanczos = 0
         self.best_obj = float('inf')
         self._debug = debug
 
@@ -70,8 +69,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             select_range=(0,0), lapack_driver='stebz')
         eig0 = eig0.item()
         lambd_lb = max(-eig0, 0) + 1e-3
-        if self._debug:
-            print('lambda_lb: %0.4e' % lambd_lb, end=' - ')
 
         # get LAPACK solver for sym-PD banded matrices
         ptsv, = get_lapack_funcs(('ptsv',), (Ta, Tb, rhs))
@@ -84,21 +81,15 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             assert info == 0
             p_norm = np.linalg.norm(p)
             if p_norm < tr_radius:
-                if self._debug:
-                    print('nlanczos=%4d: solution found' % self.nlanczos)
                 status = 0
                 break
             elif abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
-                if self._debug:
-                    print('nlanczos=%4d: relative error reached' % self.nlanczos)
                 status = 1
                 break
             _, _, v, info = ptsv(Ta_k, Tb, p)
             assert info == 0
             lambd += (p_norm**2 / v.dot(p)) * (p_norm - tr_radius) / tr_radius
         else:
-            if self._debug:
-                print('nlanczos=%d: krylov search did not converge' % self.nlanczos)
             status = -1
 
         p = torch.tensor(p, device=device, dtype=dtype)
@@ -134,8 +125,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             select_range=(0,0), lapack_driver='stebz')
         eig0 = eig0.item()
         lambd_lb = max(-eig0, 0) + 1e-3
-        if self._debug:
-            print('lambda_lb: %0.4e' % lambd_lb, end=' - ')
 
         lambd = self.lambd_0
         for _ in range(self.max_ms_iters):
@@ -146,22 +135,16 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             assert info == 0
             p_norm = np.linalg.norm(p)
             if p_norm < tr_radius:
-                if self._debug:
-                    print('nlanczos=%4d: solution found' % self.nlanczos)
                 # TODO: add extra checks
                 status = 0
                 break
             elif abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
-                if self._debug:
-                    print('nlanczos=%4d: relative error reached' % self.nlanczos)
                 status = 1
                 break
             q = solve_unit_bidiag(e, p)  # TODO
             q_norm = np.linalg.norm(q)
             lambd += (p_norm / q_norm)**2 * (p_norm - tr_radius) / tr_radius
         else:
-            if self._debug:
-                print('nlanczos=%d: krylov search did not converge' % self.nlanczos)
             status = -1
 
         p = torch.tensor(p, device=device, dtype=dtype)
@@ -186,8 +169,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         # lower-bound on lambda
         lambd_lb = eig[0].neg().clamp(min=0) + 1e-3
-        if self._debug:
-            print('lambda_lb: %0.4e' % lambd_lb, end=' - ')
 
         # iterate
         lambd = torch.tensor(self.lambd_0, device=Ta.device, dtype=Ta.dtype)
@@ -200,22 +181,16 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             p = V.mv(Vrhs / eig_k)
             p_norm = torch.linalg.norm(p)
             if p_norm < tr_radius:
-                if self._debug:
-                    print('nlanczos=%4d: solution found' % self.nlanczos)
                 # TODO: add extra checks
                 status = 0
                 break
             elif torch.abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
-                if self._debug:
-                    print('nlanczos=%4d: relative error reached' % self.nlanczos)
                 status = 1
                 break
             q = VT.mv(p) / eig_k.sqrt()
             q_norm = torch.linalg.norm(q)
             lambd.addcmul_((p_norm / q_norm)**2, (p_norm - tr_radius) / tr_radius)
         else:
-            if self._debug:
-                print('nlanczos=%d: krylov search did not converge' % self.nlanczos)
             status = -1
 
         return p, status, lambd
@@ -227,7 +202,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         m = n if self.max_lanczos is None else min(n, self.max_lanczos)
         dtype = g.dtype
         device = g.device
-        self.nlanczos = 0
         hits_boundary = True
 
         # Lanczos Q matrix buffer
@@ -245,7 +219,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         r = self.hessp(Q[0])
         torch.dot(Q[0], r, out=a[0])
         r.sub_(Q[0], alpha=a[0])
-        self.nlanczos += 1
 
         # remaining iterations
         for i in range(1, m):
@@ -264,19 +237,20 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 # re-orthogonalize
                 r.addmv_(Q[:i+1].T, Q[:i+1].mv(r), alpha=-1)
 
-            self.nlanczos += 1
-
             # GLTR sub-problem
             h, status, lambd = self.solve_krylov_mod2(a[:i+1], b[:i], gamma_0, tr_radius)
 
             if status >= 0:
                 # project p back to R^n
                 p = Q[:i+1].T.mv(h)
-                if self._debug:
-                    print('objective: %0.4e - p_norm: %0.4e' % (self(p), p.norm()))
                 # convergence check; see Algorithm 1 of [1]_
                 g_hat = self.hessp(p) + lambd * p
-                if torch.linalg.norm(g_hat + g) <= self.tol:
+                rel_error = torch.linalg.norm(g_hat + g)
+                if self._debug:
+                    print('iter %3d - status: %d - lambd: %0.4e - p_norm: %0.4e'
+                          ' - error: %0.4e' %
+                          (i+1, status, lambd, p.norm(), rel_error))
+                if rel_error <= self.tol:
                     hits_boundary = status != 0
                     break
         else:
