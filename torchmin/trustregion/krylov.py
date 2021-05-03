@@ -28,9 +28,9 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
     # extra variable defs
     tol = 1e-5
-    lambd_0 = 1e-5
+    lambd_0 = 1e-3
     max_lanczos = None
-    max_ms_iters = 100  # max iterations of the Moré-Sorensen loop
+    max_ms_iters = 500  # max iterations of the Moré-Sorensen loop
 
     def __init__(self, x, fun, k_easy=0.1, k_hard=0.2, ortho=True, debug=False):
         super().__init__(x, fun)
@@ -58,22 +58,30 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         rhs[0] = - gamma_0
         Vrhs = VT.mv(rhs)
 
+        # lower-bound on lambda
+        lambd_lb = eig[0].neg().clamp(min=0) + 1e-3
+        if self._debug:
+            print('lambda_lb: %0.4e' % lambd_lb, end=' - ')
+
         # iterate
-        lambd = eig[0].clamp(min=self.lambd_0)
+        lambd = torch.tensor(self.lambd_0, device=Ta.device, dtype=Ta.dtype)
         for _ in range(self.max_ms_iters):
+            lambd.clamp_(min=lambd_lb)
             #x = solveh_tridiag(T + lambd * I, rhs, pos=True)
             eig_k = eig + lambd
+            if self._debug:
+                assert torch.all(eig_k >= 0), 'negative eigenvalue: %0.4e' % eig_k.min()
             p = V.mv(Vrhs / eig_k)
             p_norm = torch.linalg.norm(p)
             if p_norm < tr_radius:
                 if self._debug:
-                    print('nlanczos=%d: solution found' % self.nlanczos)
+                    print('nlanczos=%4d: solution found' % self.nlanczos)
                 # TODO: add extra checks
                 status = 0
                 break
             elif torch.abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
                 if self._debug:
-                    print('nlanczos=%d: relative error reached' % self.nlanczos)
+                    print('nlanczos=%4d: relative error reached' % self.nlanczos)
                 status = 1
                 break
             q = VT.mv(p) / eig_k.sqrt()
