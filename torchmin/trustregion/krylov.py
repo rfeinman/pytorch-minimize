@@ -32,11 +32,12 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
     hess_prod = True
 
     # extra variable defs
-    lambd_0 = 1e-3
+    lambd_0 = 1e-5 # 1e-3
     max_lanczos = None
     max_ms_iters = 500  # max iterations of the Moré-Sorensen loop
 
-    def __init__(self, x, fun, k_easy=0.1, k_hard=0.2, tol=1e-5, ortho=True, debug=False):
+    def __init__(self, x, fun, k_easy=0.1, k_hard=0.2, tol=1e-5, ortho=True,
+                 debug=False):
         super().__init__(x, fun)
         self.eps = torch.finfo(x.dtype).eps
         self.k_easy = k_easy
@@ -46,58 +47,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         self.best_obj = float('inf')
         self._debug = debug
 
-    def solve_krylov_mod2(self, Ta, Tb, gamma_0, tr_radius):
-        """This version avoids factorization altogether and instead uses
-        the very fast banded solve routine.
-
-        Based on Algorithm 5.2 of [2]_ (but modified to avoid factorize)
-        """
-        device, dtype = Ta.device, Ta.dtype
-
-        # convert to numpy
-        Ta = Ta.cpu().numpy()
-        Tb = Tb.cpu().numpy()
-        tr_radius = float(tr_radius)
-
-        # right hand side
-        rhs = np.zeros_like(Ta)
-        rhs[0] = - float(gamma_0)
-
-        # estimate smallest eigenvalue
-        eig0 = eigh_tridiagonal(
-            Ta, Tb, eigvals_only=True, select='i',
-            select_range=(0,0), lapack_driver='stebz')
-        eig0 = eig0.item()
-        lambd_lb = max(-eig0, 0) + 1e-3
-
-        # get LAPACK solver for sym-PD banded matrices
-        ptsv, = get_lapack_funcs(('ptsv',), (Ta, Tb, rhs))
-
-        lambd = self.lambd_0
-        for _ in range(self.max_ms_iters):
-            lambd = max(lambd, lambd_lb)
-            Ta_k = Ta + lambd
-            _, _, p, info = ptsv(Ta_k, Tb, rhs)
-            assert info == 0
-            p_norm = np.linalg.norm(p)
-            if p_norm < tr_radius:
-                status = 0
-                break
-            elif abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
-                status = 1
-                break
-            _, _, v, info = ptsv(Ta_k, Tb, p)
-            assert info == 0
-            lambd += (p_norm**2 / v.dot(p)) * (p_norm - tr_radius) / tr_radius
-        else:
-            status = -1
-
-        p = torch.tensor(p, device=device, dtype=dtype)
-
-        return p, status, lambd
-
-
-    def solve_krylov_mod1(self, Ta, Tb, gamma_0, tr_radius):
+    def solve_krylov_mod(self, Ta, Tb, gamma_0, tr_radius):
         """This version uses the unit bi-diagonal factorization schema for T
 
         Based on Algorithm 5.2 of [2]_
@@ -113,25 +63,21 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         rhs = np.zeros_like(Ta)
         rhs[0] = - float(gamma_0)
 
-        # prepare functions for factorizing and solving sym-PD tridiagonal
-        factor_td, solve_td = get_lapack_funcs(('pttrf', 'pttrs'), (Ta, Tb))
-
-        def solve_unit_bidiag(ee, pp):
-            raise NotImplementedError  # TODO
+        # get LAPACK routines for factorizing and solving sym-PD tridiagonal
+        ptsv, pttrs, tbtrs = get_lapack_funcs(('ptsv', 'pttrs', 'tbtrs'), (Ta, Tb, rhs))
 
         # estimate smallest eigenvalue
         eig0 = eigh_tridiagonal(
             Ta, Tb, eigvals_only=True, select='i',
-            select_range=(0,0), lapack_driver='stebz')
-        eig0 = eig0.item()
+            select_range=(0,0), lapack_driver='stebz').item()
         lambd_lb = max(-eig0, 0) + 1e-3
 
         lambd = self.lambd_0
         for _ in range(self.max_ms_iters):
             lambd = max(lambd, lambd_lb)
-            d, e, info = factor_td(Ta+lambd, Tb)
-            assert info == 0
-            p, info = solve_td(d, e, rhs)
+
+            # factor T + \lambd * I = L @ D @ L^T and solve (L @ D @ L^T) p = rhs
+            d, e, p, info = ptsv(Ta + lambd, Tb, rhs)
             assert info == 0
             p_norm = np.linalg.norm(p)
             if p_norm < tr_radius:
@@ -141,9 +87,20 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             elif abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
                 status = 1
                 break
-            q = solve_unit_bidiag(e, p)  # TODO
-            q_norm = np.linalg.norm(q)
-            lambd += (p_norm / q_norm)**2 * (p_norm - tr_radius) / tr_radius
+
+            # solve L @ q = p and compute <q, D^{-1} q>
+            #band = np.zeros((2, len(Ta)), dtype=Ta.dtype)
+            #band[1, :-1] = e
+            #q, info = tbtrs(band, p, uplo='L', trans='N', diag='U')
+            #assert info == 0
+            #q_norm2 = q.dot(q / d)
+
+            # solve (L @ D @ L^T) q = p and compute <q, p>
+            v, info = pttrs(d, e, p)
+            q_norm2 = v.dot(p)
+
+            # update lambd
+            lambd += (p_norm**2 / q_norm2) * (p_norm - tr_radius) / tr_radius
         else:
             status = -1
 
@@ -238,7 +195,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 r.addmv_(Q[:i+1].T, Q[:i+1].mv(r), alpha=-1)
 
             # GLTR sub-problem
-            h, status, lambd = self.solve_krylov_mod2(a[:i+1], b[:i], gamma_0, tr_radius)
+            h, status, lambd = self.solve_krylov_mod(a[:i+1], b[:i], gamma_0, tr_radius)
 
             if status >= 0:
                 # project p back to R^n
@@ -253,6 +210,11 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 if rel_error <= self.tol:
                     hits_boundary = status != 0
                     break
+
+            elif self._debug:
+                print('iter %3d - status: %d - lambd: %0.4e' %
+                      (i+1, status, lambd))
+
         else:
             # TODO: what should we do here?
             p = -g
