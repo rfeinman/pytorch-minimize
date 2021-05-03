@@ -32,7 +32,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
     hess_prod = True
 
     # extra variable defs
-    lambd_0 = 1e-5 # 1e-3
+    lambd_0 = 1e-5  # 1e-3
     max_lanczos = None
     max_ms_iters = 500  # max iterations of the Moré-Sorensen loop
 
@@ -47,7 +47,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         self.best_obj = float('inf')
         self._debug = debug
 
-    def solve_krylov_mod(self, Ta, Tb, gamma_0, tr_radius):
+    def solve_krylov_mod(self, Ta, Tb, tr_radius):
         """This version uses the unit bi-diagonal factorization schema for T
 
         Based on Algorithm 5.2 of [2]_
@@ -61,7 +61,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         # right hand side
         rhs = np.zeros_like(Ta)
-        rhs[0] = - float(gamma_0)
+        rhs[0] = - float(self.jac_mag)
 
         # get LAPACK routines for factorizing and solving sym-PD tridiagonal
         ptsv, pttrs, tbtrs = get_lapack_funcs(('ptsv', 'pttrs', 'tbtrs'), (Ta, Tb, rhs))
@@ -108,7 +108,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         return p, status, lambd
 
-    def solve_krylov(self, Ta, Tb, gamma_0, tr_radius):
+    def solve_krylov(self, Ta, Tb, tr_radius):
         """Solve the trust-region sub-problem within a Krylov subspace
 
         Ta and Tb are the diagonal and off-diagonal parts of the (symmetric)
@@ -121,7 +121,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         # right-hand side of linear sub-problem
         rhs = torch.zeros_like(Ta)
-        rhs[0] = - gamma_0
+        rhs[0] = - self.jac_mag
         Vrhs = VT.mv(rhs)
 
         # lower-bound on lambda
@@ -159,11 +159,10 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         m = n if self.max_lanczos is None else min(n, self.max_lanczos)
         dtype = g.dtype
         device = g.device
-        hits_boundary = True
 
         # Lanczos Q matrix buffer
         Q = torch.zeros(m, n, dtype=dtype, device=device)
-        Q[0] = g
+        Q[0] = g / gamma_0
 
         # Lanczos T matrix buffers
         # a and b are the diagonal and off-diagonal entries of T, respectively
@@ -171,8 +170,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         b = torch.zeros(m, dtype=dtype, device=device)
 
         # first lanczos iteration
-        if torch.abs(gamma_0 - 1) > self.eps:
-            Q[0].div_(gamma_0)
         r = self.hessp(Q[0])
         torch.dot(Q[0], r, out=a[0])
         r.sub_(Q[0], alpha=a[0])
@@ -195,7 +192,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 r.addmv_(Q[:i+1].T, Q[:i+1].mv(r), alpha=-1)
 
             # GLTR sub-problem
-            h, status, lambd = self.solve_krylov_mod(a[:i+1], b[:i], gamma_0, tr_radius)
+            h, status, lambd = self.solve_krylov_mod(a[:i+1], b[:i], tr_radius)
 
             if status >= 0:
                 # project p back to R^n
