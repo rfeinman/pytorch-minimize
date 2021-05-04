@@ -186,9 +186,16 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
         self.k_hard = k_hard
 
         # Get Lapack function for cholesky decomposition.
-        # TODO: Once PyTorch has a cholesky variant that supports
-        # TODO: incomplete factorization we can remove this dependency.
-        self.cholesky, = get_lapack_funcs(('potrf',), (self.hess.cpu().numpy(),))
+        try:
+            # incomplete cholesky only available in
+            # pytorch >= 1.9.0.dev20210504
+            func = torch.linalg.cholesky_ex
+            self.torch_cholesky = True
+        except AttributeError:
+            # if we don't have torch cholesky, use potrf from scipy
+            self.cholesky, = get_lapack_funcs(('potrf',),
+                                              (self.hess.cpu().numpy(),))
+            self.torch_cholesky = False
 
         # Get info about Hessian
         self.dimension = len(self.hess)
@@ -250,11 +257,15 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
                 # TODO: replace with pytorch cholesky
                 H = self.hess.clone()
                 H.diagonal().add_(lambda_current)
-                U, info = self.cholesky(H.cpu().numpy(),
-                                        lower=False,
-                                        overwrite_a=False,
-                                        clean=True)
-                U = H.new_tensor(U)
+                if self.torch_cholesky:
+                    U, info = torch.linalg.cholesky_ex(H)
+                    U = U.t().contiguous()
+                else:
+                    U, info = self.cholesky(H.cpu().numpy(),
+                                            lower=False,
+                                            overwrite_a=False,
+                                            clean=True)
+                    U = H.new_tensor(U)
 
             self.niter += 1
 
@@ -309,10 +320,13 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
                     # TODO: replace with pytorch cholesky
                     H = self.hess.clone()
                     H.diagonal().add_(lambda_new)
-                    c, info = self.cholesky(H.cpu().numpy(),
-                                            lower=False,
-                                            overwrite_a=False,
-                                            clean=True)
+                    if self.torch_cholesky:
+                        _, info = torch.linalg.cholesky_ex(H)
+                    else:
+                        _, info = self.cholesky(H.cpu().numpy(),
+                                                lower=False,
+                                                overwrite_a=False,
+                                                clean=True)
 
                     if info == 0:
                         lambda_current = lambda_new
