@@ -4,11 +4,6 @@ TODO: this module is not yet complete. It is not ready for use.
 import numpy as np
 from scipy.linalg import eigh_tridiagonal, get_lapack_funcs
 import torch
-try:
-    # todo: port these functions from private "ptkit" library
-    from ptkit.linalg import solveh_tridiag, eigh_tridiag
-except:
-    pass
 
 from .base import BaseQuadraticSubproblem
 
@@ -160,8 +155,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 # project p back to R^n
                 p = Q[:i+1].T.mv(h)
                 # convergence check; see Algorithm 1 of [1]_
-                #g_hat = self.hessp(p) + lambd * p
-                #rel_error = torch.linalg.norm(g_hat + g)
+                #rel_error = torch.linalg.norm(self.hessp(p) + lambd * p + g)
                 rel_error = b[i] * h[-1].abs()
                 if self._debug:
                     print('iter %3d - status: %d - lambd: %0.4e - p_norm: %0.4e'
