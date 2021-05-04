@@ -77,6 +77,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         # get LAPACK routines for factorizing and solving sym-PD tridiagonal
         ptsv, pttrs = get_lapack_funcs(('ptsv', 'pttrs'), (Ta, Tb, rhs))
 
+        eig0 = None
         lambd_lb = 0.
         lambd = self.lambd_0
         for _ in range(self.max_ms_iters):
@@ -86,6 +87,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             d, e, p, info = ptsv(Ta + lambd, Tb, rhs)
             assert info >= 0  # sanity check
             if info > 0:
+                assert eig0 is None  # sanity check; should only happen once
                 # estimate smallest eigenvalue and continue
                 eig0 = eigh_tridiagonal(
                     Ta, Tb, eigvals_only=True, select='i',
