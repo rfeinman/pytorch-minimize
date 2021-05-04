@@ -147,7 +147,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         m = n if self.max_lanczos is None else min(n, self.max_lanczos)
         dtype = g.dtype
         device = g.device
-        p_best = None
+        h_best = None
         error_best = float('inf')
 
         # Lanczos Q matrix buffer
@@ -185,18 +185,17 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             h, status, lambd = self.tridiag_subproblem(a[:i+1], b[:i], tr_radius)
 
             if status >= 0:
-                # project p back to R^n
-                p = Q[:i+1].T.mv(h)
-                # convergence check; see Algorithm 1 of [1]_
+                # convergence check; see Algorithm 1 of [1]_ and
+                # Algorithm 5.1 of [2]_
+                #p = Q[:i+1].T.mv(h)
                 #error = torch.linalg.norm(self.hessp(p) + lambd * p + g)
                 error = b[i] * h[-1].abs()
                 if self._debug:
-                    print('iter %3d - status: %d - lambd: %0.4e - p_norm: %0.4e'
-                          ' - error: %0.4e' %
-                          (i+1, status, lambd, p.norm(), error))
+                    print('iter %3d - status: %d - lambd: %0.4e - error: %0.4e'
+                          % (i+1, status, lambd, error))
                 if error < error_best:
                     hits_boundary = status != 0
-                    p_best = p
+                    h_best = h
                     error_best = error
                 if error_best <= self.tol:
                     break
@@ -205,9 +204,11 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 print('iter %3d - status: %d - lambd: %0.4e' %
                       (i+1, status, lambd))
 
-        else:
+        if h_best is None:
             # TODO: what should we do here?
-            if p_best is None:
-                raise RuntimeError('gltr solution not found')
+            raise RuntimeError('gltr solution not found')
+
+        # project h back to R^n
+        p_best = Q[:i+1].T.mv(h_best)
 
         return p_best, hits_boundary
