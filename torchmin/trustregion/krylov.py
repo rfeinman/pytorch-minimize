@@ -5,7 +5,38 @@ import numpy as np
 from scipy.linalg import eigh_tridiagonal, get_lapack_funcs
 import torch
 
-from .base import BaseQuadraticSubproblem
+from .base import _minimize_trust_region, BaseQuadraticSubproblem
+
+
+def _minimize_trust_krylov(fun, x0, **trust_region_options):
+    """Minimization of scalar function of one or more variables using
+    the GLTR Krylov subspace trust region algorithm.
+
+    Parameters
+    ----------
+    fun : callable
+        Scalar objective function to minimize.
+    x0 : Tensor
+        Initialization point.
+    initial_tr_radius : float
+        Initial trust-region radius.
+    max_tr_radius : float
+        Maximum value of the trust-region radius. No steps that are longer
+        than this value will be proposed.
+    eta : float
+        Trust region related acceptance stringency for proposed steps.
+    gtol : float
+        Gradient norm must be less than ``gtol`` before successful
+        termination.
+
+    Returns
+    -------
+    result : OptimizeResult
+        Result of the optimization routine.
+    """
+    return _minimize_trust_region(fun, x0,
+                                  subproblem=KrylovSubproblem,
+                                  **trust_region_options)
 
 
 class KrylovSubproblem(BaseQuadraticSubproblem):
@@ -116,6 +147,8 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         m = n if self.max_lanczos is None else min(n, self.max_lanczos)
         dtype = g.dtype
         device = g.device
+        p_best = None
+        error_best = float('inf')
 
         # Lanczos Q matrix buffer
         Q = torch.zeros(m, n, dtype=dtype, device=device)
@@ -135,8 +168,8 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         # remaining iterations
         for i in range(1, m):
             if b[i-1] < self.eps:
-                # TODO: what do we do here? For now treating it as 'singular'
-                raise RuntimeError('singular matrix')
+                # TODO: what should we do here?
+                raise RuntimeError('gltr residual norm too small')
 
             torch.div(r, b[i-1], out=Q[i])
             r = self.hessp(Q[i])
@@ -155,14 +188,17 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 # project p back to R^n
                 p = Q[:i+1].T.mv(h)
                 # convergence check; see Algorithm 1 of [1]_
-                #rel_error = torch.linalg.norm(self.hessp(p) + lambd * p + g)
-                rel_error = b[i] * h[-1].abs()
+                #error = torch.linalg.norm(self.hessp(p) + lambd * p + g)
+                error = b[i] * h[-1].abs()
                 if self._debug:
                     print('iter %3d - status: %d - lambd: %0.4e - p_norm: %0.4e'
                           ' - error: %0.4e' %
-                          (i+1, status, lambd, p.norm(), rel_error))
-                if rel_error <= self.tol:
+                          (i+1, status, lambd, p.norm(), error))
+                if error < error_best:
                     hits_boundary = status != 0
+                    p_best = p
+                    error_best = error
+                if error_best <= self.tol:
                     break
 
             elif self._debug:
@@ -171,7 +207,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         else:
             # TODO: what should we do here?
-            p = -g
-            hits_boundary = True
+            if p_best is None:
+                raise RuntimeError('gltr solution not found')
 
-        return p, hits_boundary
+        return p_best, hits_boundary
