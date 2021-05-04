@@ -4,7 +4,7 @@ from .bfgs import _minimize_bfgs, _minimize_lbfgs
 from .cg import _minimize_cg
 from .newton import _minimize_newton_cg, _minimize_newton_exact
 from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
-                          _minimize_trust_ncg)
+                          _minimize_trust_ncg, _minimize_trust_krylov)
 
 _tolerance_keys = {
     'l-bfgs': 'gtol',
@@ -14,7 +14,8 @@ _tolerance_keys = {
     'newton-exact': 'xtol',
     'dogleg': 'gtol',
     'trust-ncg': 'gtol',
-    'trust-exact': 'gtol'
+    'trust-exact': 'gtol',
+    'trust-krylov': 'gtol'
 }
 
 
@@ -44,6 +45,7 @@ def minimize(
             - 'dogleg'
             - 'trust-ncg'
             - 'trust-exact'
+            - 'trust-krylov'
 
         At the moment, method must be specified; there is no default.
     max_iter : int, optional
@@ -73,7 +75,7 @@ def minimize(
     x0 = torch.as_tensor(x0)
     method = method.lower()
     assert method in ['bfgs', 'l-bfgs', 'cg', 'newton-cg', 'newton-exact',
-                      'dogleg', 'trust-ncg', 'trust-exact']
+                      'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']
     if options is None:
         options = {}
     if tol is not None:
@@ -99,5 +101,7 @@ def minimize(
         return _minimize_trust_ncg(fun, x0, **options)
     elif method == 'trust-exact':
         return _minimize_trust_exact(fun, x0, **options)
+    elif method == 'trust-krylov':
+        return _minimize_trust_krylov(fun, x0, **options)
     else:
         raise RuntimeError('invalid method "{}" encountered.'.format(method))

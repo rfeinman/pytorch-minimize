@@ -12,6 +12,10 @@ def _minimize_trust_krylov(fun, x0, **trust_region_options):
     """Minimization of scalar function of one or more variables using
     the GLTR Krylov subspace trust region algorithm.
 
+    .. note::
+        This minimizer is in early stages and has not been rigorously
+        tested. It should be used with caution.
+
     Parameters
     ----------
     fun : callable
