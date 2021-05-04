@@ -57,6 +57,12 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         Where `D` is diagonal and `L` unit (lower) bi-diagonal.
         """
+        if torch.any(Tb == 0):
+            # TODO: what to do if this happens?
+            #  It means the Lanczos process has broken down and must
+            #  be restarted. Should not occur with ortho=True.
+            raise RuntimeError('Reducible T matrix encountered.')
+
         device, dtype = Ta.device, Ta.dtype
 
         # convert to numpy
@@ -71,19 +77,21 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         # get LAPACK routines for factorizing and solving sym-PD tridiagonal
         ptsv, pttrs = get_lapack_funcs(('ptsv', 'pttrs'), (Ta, Tb, rhs))
 
-        # estimate smallest eigenvalue
-        eig0 = eigh_tridiagonal(
-            Ta, Tb, eigvals_only=True, select='i',
-            select_range=(0,0), lapack_driver='stebz').item()
-        lambd_lb = max(1e-3 - eig0, 0)
-
+        lambd_lb = 0.
         lambd = self.lambd_0
         for _ in range(self.max_ms_iters):
             lambd = max(lambd, lambd_lb)
 
             # factor T + \lambd * I = L @ D @ L^T and solve (L @ D @ L^T) p = rhs
             d, e, p, info = ptsv(Ta + lambd, Tb, rhs)
-            assert info == 0
+            assert info >= 0  # sanity check
+            if info > 0:
+                # estimate smallest eigenvalue and continue
+                eig0 = eigh_tridiagonal(
+                    Ta, Tb, eigvals_only=True, select='i',
+                    select_range=(0,0), lapack_driver='stebz').item()
+                lambd_lb = max(1e-3 - eig0, 0)
+                continue
 
             p_norm = np.linalg.norm(p)
             if p_norm < tr_radius:
