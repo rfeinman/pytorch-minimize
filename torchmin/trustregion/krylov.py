@@ -14,7 +14,8 @@ from .base import BaseQuadraticSubproblem
 
 
 class KrylovSubproblem(BaseQuadraticSubproblem):
-    """Quadratic subproblem solved by a conjugate gradient method.
+    """The GLTR trust region sub-problem defined on an expanding
+    Krylov subspace.
 
     Based on the implementation of GLTR described in [1]_.
 
@@ -30,9 +31,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
            Springer Science & Business Media. pp. 83-91, 2006.
     """
     hess_prod = True
-
-    # extra variable defs
-    lambd_0 = 1e-5  # 1e-3
     max_lanczos = None
     max_ms_iters = 500  # max iterations of the Moré-Sorensen loop
 
@@ -79,7 +77,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         eig0 = None
         lambd_lb = 0.
-        lambd = self.lambd_0
+        lambd = 0.
         for _ in range(self.max_ms_iters):
             lambd = max(lambd, lambd_lb)
 
