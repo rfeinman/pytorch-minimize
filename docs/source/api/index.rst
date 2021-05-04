@@ -33,6 +33,7 @@ The :func:`minimize` function is a general utility for *unconstrained* minimizat
     minimize-dogleg
     minimize-trust-ncg
     minimize-trust-exact
+    minimize-trust-krylov
 
 
 **Constrained minimization**
