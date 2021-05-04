@@ -22,7 +22,7 @@ x0 = torch.tensor([1., 8.])
 
 # Select from the following methods:
 #  ['bfgs', 'l-bfgs', 'cg', 'newton-cg', 'newton-exact', 
-#   'trust-ncg', 'trust-exact', 'dogleg']
+#   'trust-ncg', 'trust-krylov', 'trust-exact', 'dogleg']
 
 # BFGS
 result = minimize(rosen, x0, method='bfgs')
@@ -34,7 +34,7 @@ result = minimize(rosen, x0, method='newton-cg')
 result = minimize(rosen, x0, method='newton-exact')
 ```
 
-__Solvers:__ BFGS, L-BFGS, Conjugate Gradient (CG), Newton Conjugate Gradient (NCG), Newton Exact, Dogleg, Trust-Region Exact, Trust-Region NCG
+__Solvers:__ BFGS, L-BFGS, Conjugate Gradient (CG), Newton Conjugate Gradient (NCG), Newton Exact, Dogleg, Trust-Region Exact, Trust-Region NCG, Trust-Region GLTR (Krylov)
 
 __Examples:__ See the [Rosenbrock minimization notebook](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/rosen_minimize.ipynb) for a demonstration of function minimization with a handful of different algorithms.
 
@@ -70,6 +70,8 @@ The following solvers are available for _unconstrained_ minimization:
 - __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
 
 - __Trust-Region Newton Conjugate Gradient.__ Description coming soon.
+
+- __Trust-Region Newton Generalized Lanczos (Krylov).__ Description coming soon.
 
 - __Trust-Region Exact.__ Description coming soon.
 
