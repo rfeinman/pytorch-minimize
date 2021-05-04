@@ -166,7 +166,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         # first lanczos iteration
         r = self.hessp(Q[0])
         torch.dot(Q[0], r, out=a[0])
-        r.sub_(Q[0], alpha=a[0])
+        r.sub_(Q[0] * a[0])
         torch.linalg.norm(r, out=b[0])
 
         # remaining iterations
@@ -177,9 +177,9 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
             torch.div(r, b[i-1], out=Q[i])
             r = self.hessp(Q[i])
-            r.sub_(Q[i-1], alpha=b[i-1])
+            r.sub_(Q[i-1] * b[i-1])
             torch.dot(Q[i], r, out=a[i])
-            r.sub_(Q[i], alpha=a[i])
+            r.sub_(Q[i] * a[i])
             if self.ortho:
                 # re-orthogonalize
                 r.addmv_(Q[:i+1].T, Q[:i+1].mv(r), alpha=-1)
