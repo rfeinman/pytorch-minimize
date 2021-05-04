@@ -194,11 +194,12 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                     print('iter %3d - status: %d - lambd: %0.4e - error: %0.4e'
                           % (i+1, status, lambd, error))
                 if error < error_best:
+                    # we've found a new best
                     hits_boundary = status != 0
                     h_best = h
                     error_best = error
-                if error_best <= self.tol:
-                    break
+                    if error_best <= self.tol:
+                        break
 
             elif self._debug:
                 print('iter %3d - status: %d - lambd: %0.4e' %
