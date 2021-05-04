@@ -42,7 +42,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         self.k_hard = k_hard
         self.tol = tol
         self.ortho = ortho
-        self.best_obj = float('inf')
         self._debug = debug
 
     def tridiag_subproblem(self, Ta, Tb, tr_radius):
@@ -136,14 +135,13 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         r = self.hessp(Q[0])
         torch.dot(Q[0], r, out=a[0])
         r.sub_(Q[0], alpha=a[0])
+        torch.linalg.norm(r, out=b[0])
 
         # remaining iterations
         for i in range(1, m):
-            torch.linalg.norm(r, out=b[i-1])  # gamma_{k-1} = norm(v_k)
             if b[i-1] < self.eps:
                 # TODO: what do we do here? For now treating it as 'singular'
                 raise RuntimeError('singular matrix')
-                # m = i; break
 
             torch.div(r, b[i-1], out=Q[i])
             r = self.hessp(Q[i])
@@ -153,6 +151,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             if self.ortho:
                 # re-orthogonalize
                 r.addmv_(Q[:i+1].T, Q[:i+1].mv(r), alpha=-1)
+            torch.linalg.norm(r, out=b[i])
 
             # GLTR sub-problem
             h, status, lambd = self.tridiag_subproblem(a[:i+1], b[:i], tr_radius)
@@ -161,8 +160,9 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 # project p back to R^n
                 p = Q[:i+1].T.mv(h)
                 # convergence check; see Algorithm 1 of [1]_
-                g_hat = self.hessp(p) + lambd * p
-                rel_error = torch.linalg.norm(g_hat + g)
+                #g_hat = self.hessp(p) + lambd * p
+                #rel_error = torch.linalg.norm(g_hat + g)
+                rel_error = b[i] * h[-1].abs()
                 if self._debug:
                     print('iter %3d - status: %d - lambd: %0.4e - p_norm: %0.4e'
                           ' - error: %0.4e' %
