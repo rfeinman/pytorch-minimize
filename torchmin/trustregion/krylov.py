@@ -70,7 +70,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         eig0 = eigh_tridiagonal(
             Ta, Tb, eigvals_only=True, select='i',
             select_range=(0,0), lapack_driver='stebz').item()
-        lambd_lb = max(-eig0, 0) + 1e-3
+        lambd_lb = max(1e-3 - eig0, 0)
 
         lambd = self.lambd_0
         for _ in range(self.max_ms_iters):
@@ -125,7 +125,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         Vrhs = VT.mv(rhs)
 
         # lower-bound on lambda
-        lambd_lb = eig[0].neg().clamp(min=0) + 1e-3
+        lambd_lb = torch.clamp(1e-3 - eig[0], min=0)
 
         # iterate
         lambd = torch.tensor(self.lambd_0, device=Ta.device, dtype=Ta.dtype)
