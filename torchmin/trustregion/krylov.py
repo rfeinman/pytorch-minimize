@@ -47,10 +47,15 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         self.best_obj = float('inf')
         self._debug = debug
 
-    def solve_krylov_mod(self, Ta, Tb, tr_radius):
-        """This version uses the unit bi-diagonal factorization schema for T
+    def tridiag_subproblem(self, Ta, Tb, tr_radius):
+        """Solve the GLTR tridiagonal subproblem.
 
-        Based on Algorithm 5.2 of [2]_
+        Based on Algorithm 5.2 of [2]_. We factorize as follows:
+
+        .. math::
+            T + \lambd * I = L @ D @ L^T
+
+        Where `D` is diagonal and `L` unit (lower) bi-diagonal.
         """
         device, dtype = Ta.device, Ta.dtype
 
@@ -64,7 +69,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         rhs[0] = - float(self.jac_mag)
 
         # get LAPACK routines for factorizing and solving sym-PD tridiagonal
-        ptsv, pttrs, tbtrs = get_lapack_funcs(('ptsv', 'pttrs', 'tbtrs'), (Ta, Tb, rhs))
+        ptsv, pttrs = get_lapack_funcs(('ptsv', 'pttrs'), (Ta, Tb, rhs))
 
         # estimate smallest eigenvalue
         eig0 = eigh_tridiagonal(
@@ -79,6 +84,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             # factor T + \lambd * I = L @ D @ L^T and solve (L @ D @ L^T) p = rhs
             d, e, p, info = ptsv(Ta + lambd, Tb, rhs)
             assert info == 0
+
             p_norm = np.linalg.norm(p)
             if p_norm < tr_radius:
                 # TODO: add extra checks
@@ -87,13 +93,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
             elif abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
                 status = 1
                 break
-
-            # solve L @ q = p and compute <q, D^{-1} q>
-            #band = np.zeros((2, len(Ta)), dtype=Ta.dtype)
-            #band[1, :-1] = e
-            #q, info = tbtrs(band, p, uplo='L', trans='N', diag='U')
-            #assert info == 0
-            #q_norm2 = q.dot(q / d)
 
             # solve (L @ D @ L^T) q = p and compute <q, p>
             v, info = pttrs(d, e, p)
@@ -108,12 +107,9 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         return p, status, lambd
 
-    def solve_krylov(self, Ta, Tb, tr_radius):
-        """Solve the trust-region sub-problem within a Krylov subspace
+    def tridiag_subproblem_old(self, Ta, Tb, tr_radius):
+        """Solve the GLTR tridiagonal subproblem.
 
-        Ta and Tb are the diagonal and off-diagonal parts of the (symmetric)
-        tridiagonal matrix T. We use a variant of the Moré-Sorensen algorithm
-        that exploits the tri-diagonal structure of T.
         """
         # eigen decomposition
         eig, V = eigh_tridiag(Ta, Tb)
@@ -182,17 +178,17 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 raise RuntimeError('singular matrix')
                 # m = i; break
 
-            torch.div(r, b[i-1], out=Q[i])  # q
-            r = self.hessp(Q[i])  # H @ q
-            r.sub_(Q[i-1], alpha=b[i-1])  # v = H @ q - gamma_prev * q_prev
-            torch.dot(Q[i], r, out=a[i])  # delta = <q, H @ q - gamma_prev * q_prev>
-            r.sub_(Q[i], alpha=a[i])  # v = H @ q - gamma_prev * q_prev - delta * q
+            torch.div(r, b[i-1], out=Q[i])
+            r = self.hessp(Q[i])
+            r.sub_(Q[i-1], alpha=b[i-1])
+            torch.dot(Q[i], r, out=a[i])
+            r.sub_(Q[i], alpha=a[i])
             if self.ortho:
                 # re-orthogonalize
                 r.addmv_(Q[:i+1].T, Q[:i+1].mv(r), alpha=-1)
 
             # GLTR sub-problem
-            h, status, lambd = self.solve_krylov_mod(a[:i+1], b[:i], tr_radius)
+            h, status, lambd = self.tridiag_subproblem(a[:i+1], b[:i], tr_radius)
 
             if status >= 0:
                 # project p back to R^n
