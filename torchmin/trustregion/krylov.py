@@ -117,47 +117,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         return p, status, lambd
 
-    def tridiag_subproblem_old(self, Ta, Tb, tr_radius):
-        """Solve the GLTR tridiagonal subproblem.
-
-        """
-        # eigen decomposition
-        eig, V = eigh_tridiag(Ta, Tb)
-        VT = V.T
-
-        # right-hand side of linear sub-problem
-        rhs = torch.zeros_like(Ta)
-        rhs[0] = - self.jac_mag
-        Vrhs = VT.mv(rhs)
-
-        # lower-bound on lambda
-        lambd_lb = torch.clamp(1e-3 - eig[0], min=0)
-
-        # iterate
-        lambd = torch.tensor(self.lambd_0, device=Ta.device, dtype=Ta.dtype)
-        for _ in range(self.max_ms_iters):
-            lambd.clamp_(min=lambd_lb)
-            #x = solveh_tridiag(T + lambd * I, rhs, pos=True)
-            eig_k = eig + lambd
-            if self._debug:
-                assert torch.all(eig_k >= 0), 'negative eigenvalue: %0.4e' % eig_k.min()
-            p = V.mv(Vrhs / eig_k)
-            p_norm = torch.linalg.norm(p)
-            if p_norm < tr_radius:
-                # TODO: add extra checks
-                status = 0
-                break
-            elif torch.abs(p_norm - tr_radius) / tr_radius <= self.k_easy:
-                status = 1
-                break
-            q = VT.mv(p) / eig_k.sqrt()
-            q_norm = torch.linalg.norm(q)
-            lambd.addcmul_((p_norm / q_norm)**2, (p_norm - tr_radius) / tr_radius)
-        else:
-            status = -1
-
-        return p, status, lambd
-
     def solve(self, tr_radius):
         g = self.jac
         gamma_0 = self.jac_mag
