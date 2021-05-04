@@ -254,7 +254,6 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
             if already_factorized:
                 already_factorized = False
             else:
-                # TODO: replace with pytorch cholesky
                 H = self.hess.clone()
                 H.diagonal().add_(lambda_current)
                 if self.torch_cholesky:
@@ -317,7 +316,6 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
                     lambda_lb = torch.max(lambda_lb, lambda_current - s_min**2)
 
                     # Compute Cholesky factorization
-                    # TODO: replace with pytorch cholesky
                     H = self.hess.clone()
                     H.diagonal().add_(lambda_new)
                     if self.torch_cholesky:
