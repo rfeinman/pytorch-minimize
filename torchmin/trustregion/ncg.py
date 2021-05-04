@@ -38,6 +38,14 @@ def _minimize_trust_ncg(
     -------
     result : OptimizeResult
         Result of the optimization routine.
+
+    Notes
+    -----
+    This is algorithm (7.2) of Nocedal and Wright 2nd edition.
+    Only the function that computes the Hessian-vector product is required.
+    The Hessian itself is not required, and the Hessian does
+    not need to be positive semidefinite.
+
     """
     return _minimize_trust_region(fun, x0,
                                   subproblem=CGSteihaugSubproblem,
@@ -49,8 +57,7 @@ class CGSteihaugSubproblem(BaseQuadraticSubproblem):
     hess_prod = True
 
     def solve(self, trust_radius):
-        """
-        Solve the subproblem using a conjugate gradient method.
+        """Solve the subproblem using a conjugate gradient method.
 
         Parameters
         ----------
@@ -64,12 +71,6 @@ class CGSteihaugSubproblem(BaseQuadraticSubproblem):
         hits_boundary : bool
             True if the proposed step is on the boundary of the trust region.
 
-        Notes
-        -----
-        This is algorithm (7.2) of Nocedal and Wright 2nd edition.
-        Only the function that computes the Hessian-vector product is required.
-        The Hessian itself is not required, and the Hessian does
-        not need to be positive semidefinite.
         """
 
         # get the norm of jacobian and define the origin

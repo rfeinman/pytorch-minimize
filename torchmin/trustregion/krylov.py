@@ -10,11 +10,11 @@ from .base import _minimize_trust_region, BaseQuadraticSubproblem
 
 def _minimize_trust_krylov(fun, x0, **trust_region_options):
     """Minimization of scalar function of one or more variables using
-    the GLTR Krylov subspace trust region algorithm.
+    the GLTR Krylov subspace trust-region algorithm.
 
-    .. note::
+    .. warning::
         This minimizer is in early stages and has not been rigorously
-        tested. It should be used with caution.
+        tested. It may change in the near future.
 
     Parameters
     ----------
@@ -37,6 +37,23 @@ def _minimize_trust_krylov(fun, x0, **trust_region_options):
     -------
     result : OptimizeResult
         Result of the optimization routine.
+
+    Notes
+    -----
+    This trust-region solver is based on the GLTR algorithm as
+    described in [1]_ and [2]_.
+
+    References
+    ----------
+    .. [1] F. Lenders, C. Kirches, and A. Potschka, "trlib: A vector-free
+           implementation of the GLTR method for...",
+           arXiv:1611.04718.
+    .. [2] N. Gould, S. Lucidi, M. Roma, P. Toint: “Solving the Trust-Region
+           Subproblem using the Lanczos Method”,
+           SIAM J. Optim., 9(2), 504–525, 1999.
+    .. [3] J. Nocedal and  S. Wright, "Numerical optimization",
+           Springer Science & Business Media. pp. 83-91, 2006.
+
     """
     return _minimize_trust_region(fun, x0,
                                   subproblem=KrylovSubproblem,

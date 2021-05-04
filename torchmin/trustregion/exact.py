@@ -40,6 +40,23 @@ def _minimize_trust_exact(fun, x0, **trust_region_options):
     -------
     result : OptimizeResult
         Result of the optimization routine.
+
+    Notes
+    -----
+    This trust-region solver was based on [1]_, [2]_ and [3]_,
+    which implement similar algorithms. The algorithm is basically
+    that of [1]_ but ideas from [2]_ and [3]_ were also used.
+
+    References
+    ----------
+    .. [1] A.R. Conn, N.I. Gould, and P.L. Toint, "Trust region methods",
+           Siam, pp. 169-200, 2000.
+    .. [2] J. Nocedal and  S. Wright, "Numerical optimization",
+           Springer Science & Business Media. pp. 83-91, 2006.
+    .. [3] J.J. More and D.C. Sorensen, "Computing a trust region step",
+           SIAM Journal on Scientific and Statistical Computing, vol. 4(3),
+           pp. 553-572, 1983.
+
     """
     return _minimize_trust_region(fun, x0,
                                   subproblem=IterativeSubproblem,
@@ -137,24 +154,7 @@ def singular_leading_submatrix(A, U, k):
 
 
 class IterativeSubproblem(BaseQuadraticSubproblem):
-    """Quadratic subproblem solved by nearly exact iterative method.
-
-    Notes
-    -----
-    This subproblem solver was based on [1]_, [2]_ and [3]_,
-    which implement similar algorithms. The algorithm is basically
-    that of [1]_ but ideas from [2]_ and [3]_ were also used.
-
-    References
-    ----------
-    .. [1] A.R. Conn, N.I. Gould, and P.L. Toint, "Trust region methods",
-           Siam, pp. 169-200, 2000.
-    .. [2] J. Nocedal and  S. Wright, "Numerical optimization",
-           Springer Science & Business Media. pp. 83-91, 2006.
-    .. [3] J.J. More and D.C. Sorensen, "Computing a trust region step",
-           SIAM Journal on Scientific and Statistical Computing, vol. 4(3),
-           pp. 553-572, 1983.
-    """
+    """Quadratic subproblem solved by nearly exact iterative method."""
 
     # UPDATE_COEFF appears in reference [1]_
     # in formula 7.3.14 (p. 190) named as "theta".

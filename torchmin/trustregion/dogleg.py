@@ -14,9 +14,12 @@ from .base import _minimize_trust_region, BaseQuadraticSubproblem
 
 def _minimize_dogleg(
         fun, x0, **trust_region_options):
-    """
-    Minimization of scalar function of one or more variables using
+    """Minimization of scalar function of one or more variables using
     the dog-leg trust-region algorithm.
+
+    .. warning::
+        The Hessian is required to be positive definite at all times;
+        otherwise this algorithm will fail.
 
     Parameters
     ----------
@@ -39,6 +42,13 @@ def _minimize_dogleg(
     -------
     result : OptimizeResult
         Result of the optimization routine.
+
+    References
+    ----------
+    .. [1] Jorge Nocedal and Stephen Wright,
+           Numerical Optimization, second edition,
+           Springer-Verlag, 2006, page 73.
+
     """
     return _minimize_trust_region(fun, x0,
                                   subproblem=DoglegSubproblem,
@@ -70,30 +80,7 @@ class DoglegSubproblem(BaseQuadraticSubproblem):
         return self._newton_point
 
     def solve(self, trust_radius):
-        """
-        Minimize a function using the dog-leg trust-region algorithm.
-        This algorithm requires function values and first and second derivatives.
-        It also performs a costly Hessian decomposition for most iterations,
-        and the Hessian is required to be positive definite.
-        Parameters
-        ----------
-        trust_radius : float
-            We are allowed to wander only this far away from the origin.
-        Returns
-        -------
-        p : ndarray
-            The proposed step.
-        hits_boundary : bool
-            True if the proposed step is on the boundary of the trust region.
-        Notes
-        -----
-        The Hessian is required to be positive definite.
-        References
-        ----------
-        .. [1] Jorge Nocedal and Stephen Wright,
-               Numerical Optimization, second edition,
-               Springer-Verlag, 2006, page 73.
-        """
+        """Solve quadratic subproblem"""
 
         # Compute the Newton point.
         # This is the optimum for the quadratic model function.
