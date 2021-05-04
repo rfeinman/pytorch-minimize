@@ -6,6 +6,8 @@ Code ported from SciPy to PyTorch
 Copyright (c) 2001-2002 Enthought, Inc.  2003-2019, SciPy Developers.
 All rights reserved.
 """
+from typing import Tuple
+from torch import Tensor
 import torch
 from torch.linalg import norm
 from scipy.linalg import get_lapack_funcs
@@ -52,33 +54,37 @@ def solve_cholesky(A, b, **kwargs):
     return torch.cholesky_solve(b.unsqueeze(1), A, **kwargs).squeeze(1)
 
 
-def estimate_smallest_singular_value(U):
+@torch.jit.script
+def estimate_smallest_singular_value(U) -> Tuple[Tensor, Tensor]:
     """Given upper triangular matrix ``U`` estimate the smallest singular
     value and the correspondent right singular vector in O(n**2) operations.
+
+    A vector `e` with components selected from {+1, -1}
+    is selected so that the solution `w` to the system
+    `U.T w = e` is as large as possible. Implementation
+    based on algorithm 3.5.1, p. 142, from reference [1]_
+    adapted for lower triangular matrix.
+
+    References
+    ----------
+    .. [1] G.H. Golub, C.F. Van Loan. "Matrix computations".
+           Forth Edition. JHU press. pp. 140-142.
     """
 
     U = torch.atleast_2d(U)
+    UT = U.T
     m, n = U.shape
-
     if m != n:
         raise ValueError("A square triangular matrix should be provided.")
 
-    # A vector `e` with components selected from {+1, -1}
-    # is selected so that the solution `w` to the system
-    # `U.T w = e` is as large as possible. Implementation
-    # based on algorithm 3.5.1, p. 142, from reference [2]
-    # adapted for lower triangular matrix.
+    p = torch.zeros(n, dtype=U.dtype, device=U.device)
+    w = torch.empty(n, dtype=U.dtype, device=U.device)
 
-    p = U.new_zeros(n)
-    w = U.new_empty(n)
-
-    # Implemented according to:  Golub, G. H., Van Loan, C. F. (2013).
-    # "Matrix computations". Forth Edition. JHU press. pp. 140-142.
     for k in range(n):
-        wp = (1-p[k]) / U.T[k, k]
-        wm = (-1-p[k]) / U.T[k, k]
-        pp = p[k+1:] + U.T[k+1:, k] * wp
-        pm = p[k+1:] + U.T[k+1:, k] * wm
+        wp = (1-p[k]) / UT[k, k]
+        wm = (-1-p[k]) / UT[k, k]
+        pp = p[k+1:] + UT[k+1:, k] * wp
+        pm = p[k+1:] + UT[k+1:, k] * wm
 
         if wp.abs() + norm(pp, 1) >= wm.abs() + norm(pm, 1):
             w[k] = wp
@@ -88,16 +94,11 @@ def estimate_smallest_singular_value(U):
             p[k+1:] = pm
 
     # The system `U v = w` is solved using backward substitution.
-    v = solve_triangular(U, w)
-
+    v = torch.triangular_solve(w.view(-1,1), U)[0].view(-1)
     v_norm = norm(v)
-    w_norm = norm(w)
 
-    # Smallest singular value
-    s_min = w_norm / v_norm
-
-    # Associated vector
-    z_min = v / v_norm
+    s_min = norm(w) / v_norm  # Smallest singular value
+    z_min = v / v_norm        # Associated vector
 
     return s_min, z_min
 
