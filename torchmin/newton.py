@@ -1,5 +1,6 @@
 from scipy.optimize import OptimizeResult
 from scipy.optimize.optimize import _status_message
+from scipy.sparse.linalg import eigsh
 from torch import Tensor
 import torch
 
@@ -313,10 +314,13 @@ def _minimize_newton_exact(
                 d = g.neg()
             elif handle_npd == 'eig':
                 # this setting is experimental! use with caution
-                eig, V = torch.linalg.eigh(hess)
-                tau = torch.clamp(-1.5 * eig[0], min=1e-3)
-                eig.add_(tau)
-                d = - V.mv(V.t().mv(g) / eig)
+                # TODO: why chose the factor 1.5 here? Seems to work best
+                eig0 = eigsh(hess.cpu().numpy(), k=1, which="SA", tol=1e-4,
+                             return_eigenvectors=False).item()
+                tau = max(1e-3 - 1.5 * eig0, 0)
+                hess.diagonal().add_(tau)
+                d = torch.cholesky_solve(g.neg().unsqueeze(1),
+                                         torch.linalg.cholesky(hess)).squeeze(1)
             else:
                 raise RuntimeError('invalid handle_npd encountered.')
 
