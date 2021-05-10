@@ -101,12 +101,6 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
 
         Where `D` is diagonal and `L` unit (lower) bi-diagonal.
         """
-        if torch.any(Tb == 0):
-            # TODO: what to do if this happens?
-            #  It means the Lanczos process has broken down and must
-            #  be restarted. Should not occur with ortho=True.
-            raise RuntimeError('Reducible T matrix encountered.')
-
         device, dtype = Ta.device, Ta.dtype
 
         # convert to numpy
@@ -185,31 +179,32 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         torch.dot(Q[0], r, out=a[0])
         r.sub_(Q[0] * a[0])
         torch.linalg.norm(r, out=b[0])
+        if b[0] < self.eps:
+            raise RuntimeError('initial beta is zero.')
 
         # remaining iterations
         for i in range(1, m):
-            if b[i-1] < self.eps:
-                # TODO: what should we do here?
-                raise RuntimeError('gltr residual norm too small')
-
             torch.div(r, b[i-1], out=Q[i])
             r = self.hessp(Q[i])
             r.sub_(Q[i-1] * b[i-1])
             torch.dot(Q[i], r, out=a[i])
             r.sub_(Q[i] * a[i])
             if self.ortho:
-                # re-orthogonalize
+                # Re-orthogonalize with Gram-Schmidt
                 r.addmv_(Q[:i+1].T, Q[:i+1].mv(r), alpha=-1)
             torch.linalg.norm(r, out=b[i])
+            if b[i] < self.eps:
+                # This should never occur when self.ortho=True
+                raise RuntimeError('reducible T matrix encountered.')
 
             # GLTR sub-problem
             h, status, lambd = self.tridiag_subproblem(a[:i+1], b[:i], tr_radius)
 
             if status >= 0:
                 # convergence check; see Algorithm 1 of [1]_ and
-                # Algorithm 5.1 of [2]_
-                #p = Q[:i+1].T.mv(h)
-                #error = torch.linalg.norm(self.hessp(p) + lambd * p + g)
+                # Algorithm 5.1 of [2]_. Equivalent to the following:
+                #     p = Q[:i+1].T.mv(h)
+                #     error = torch.linalg.norm(self.hessp(p) + lambd * p + g)
                 error = b[i] * h[-1].abs()
                 if self._debug:
                     print('iter %3d - status: %d - lambd: %0.4e - error: %0.4e'
