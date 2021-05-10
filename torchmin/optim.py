@@ -237,11 +237,12 @@ class Minimizer(Optimizer):
 
     @torch.no_grad()
     def step(self, closure):
-        """Performs a single optimization step.
+        """Perform an optimization step.
 
-        Args:
-            closure (callable): A closure that reevaluates the model
-                and returns the loss.
+        Parameters
+        ----------
+        closure : callable
+            A function that re-evaluates the model and returns the loss.
         """
         # sanity check
         assert len(self.param_groups) == 1

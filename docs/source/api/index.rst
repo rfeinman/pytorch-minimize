@@ -71,8 +71,8 @@ The optimizer API provides an alternative interface based on PyTorch's :mod:`opt
 
 .. autosummary::
     :toctree: generated
-    :nosignatures:
 
     Minimizer
+    Minimizer.step
 
 The :class:`Minimizer` class inherits from :class:`torch.optim.Optimizer` and constructs an object that will hold the state of the provided variables. Unlike the functional API, which expects parameters to be a single Tensor, parameters can be passed to :class:`Minimizer` as iterables of Tensors. When using bound constraints, `bounds` are passed as iterables with same length as `params`, i.e. one bound specification per parameter Tensor.
