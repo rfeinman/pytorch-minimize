@@ -97,7 +97,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         Based on Algorithm 5.2 of [2]_. We factorize as follows:
 
         .. math::
-            T + \lambd * I = L @ D @ L^T
+            T + lambd * I = LDL^T
 
         Where `D` is diagonal and `L` unit (lower) bi-diagonal.
         """
@@ -121,7 +121,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
         for _ in range(self.max_ms_iters):
             lambd = max(lambd, lambd_lb)
 
-            # factor T + \lambd * I = L @ D @ L^T and solve (L @ D @ L^T) p = rhs
+            # factor T + lambd * I = LDL^T and solve LDL^T p = rhs
             d, e, p, info = ptsv(Ta + lambd, Tb, rhs)
             assert info >= 0  # sanity check
             if info > 0:
@@ -142,7 +142,7 @@ class KrylovSubproblem(BaseQuadraticSubproblem):
                 status = 1
                 break
 
-            # solve (L @ D @ L^T) q = p and compute <q, p>
+            # solve LDL^T q = p and compute <q, p>
             v, info = pttrs(d, e, p)
             q_norm2 = v.dot(p)
 
