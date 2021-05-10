@@ -243,6 +243,10 @@ class Minimizer(Optimizer):
         ----------
         closure : callable
             A function that re-evaluates the model and returns the loss.
+            See the `closure instructions
+            <https://pytorch.org/docs/stable/optim.html#optimizer-step-closure>`_
+            from PyTorch Optimizer docs for areference on how to construct
+            this callable.
         """
         # sanity check
         assert len(self.param_groups) == 1
