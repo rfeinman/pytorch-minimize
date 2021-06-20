@@ -15,4 +15,4 @@ Once these steps have been completed, you should be able to make inports such as
 
 **PyTorch requirement**
 
-This library uses latest features from the actively-developed :mod:`torch.linalg` module. It is suggested to use pytorch>=1.8, which includes a number of efficiency improvements over older versions. For maximum performance, users should install the bleeding-edge "nightly" pytorch version, as it includes some new items not yet available in stable releases (e.g. `torch.linalg.cholesky_ex <https://pytorch.org/docs/master/generated/torch.linalg.cholesky_ex.html#torch.linalg.cholesky_ex>`_). Pytorch-minimize will automatically use these features when available.
+This library uses latest features from the actively-developed :mod:`torch.linalg` module. For maximum performance, users should install pytorch>=1.9, as it includes some new items not available in prior releases (e.g. `torch.linalg.cholesky_ex <https://pytorch.org/docs/stable/generated/torch.linalg.cholesky_ex.html>`_). Pytorch-minimize will automatically use these features when available.

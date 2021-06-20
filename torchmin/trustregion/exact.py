@@ -186,12 +186,10 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
         self.k_hard = k_hard
 
         # Get Lapack function for cholesky decomposition.
-        try:
-            # incomplete cholesky only available in
-            # pytorch >= 1.9.0.dev20210504
-            func = torch.linalg.cholesky_ex
+        # NOTE: cholesky_ex requires pytorch >= 1.9.0
+        if 'cholesky_ex' in dir(torch.linalg):
             self.torch_cholesky = True
-        except AttributeError:
+        else:
             # if we don't have torch cholesky, use potrf from scipy
             self.cholesky, = get_lapack_funcs(('potrf',),
                                               (self.hess.cpu().numpy(),))
