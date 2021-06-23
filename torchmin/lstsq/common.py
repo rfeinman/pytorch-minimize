@@ -235,7 +235,7 @@ def solve_trust_region_2d(B, g, Delta):
     the solution of which is found by numpy.roots.
     """
     try:
-        L = torch.cholesky(B)
+        L = torch.linalg.cholesky(B)
         p = - torch.cholesky_solve(g.unsqueeze(1), L).squeeze(1)
         if p.dot(p) <= Delta**2:
             return p, True

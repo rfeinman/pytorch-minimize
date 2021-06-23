@@ -75,7 +75,7 @@ class DoglegSubproblem(BaseQuadraticSubproblem):
         """
         if self._newton_point is None:
             p = -torch.cholesky_solve(self.jac.view(-1,1),
-                                      torch.cholesky(self.hess))
+                                      torch.linalg.cholesky(self.hess))
             self._newton_point = p.view(-1)
         return self._newton_point
 
