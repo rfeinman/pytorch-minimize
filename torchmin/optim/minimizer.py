@@ -106,9 +106,6 @@ class Minimizer(Optimizer):
             offset += numel
         assert offset == self._numel()
 
-    def fun(self, x):
-        raise NotImplementedError
-
     def closure(self, x):
         from torchmin.function import sf_value
 
