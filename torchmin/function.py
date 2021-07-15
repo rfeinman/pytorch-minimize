@@ -5,7 +5,11 @@ import torch
 import torch.autograd as autograd
 from torch._vmap_internals import _vmap
 
+from .optim.minimizer import Minimizer
+
 __all__ = ['ScalarFunction', 'VectorFunction']
+
+
 
 # scalar function result (value)
 sf_value = namedtuple('sf_value', ['f', 'grad', 'hessp', 'hess'])
@@ -67,8 +71,14 @@ class ScalarFunction(object):
     compute first- and second-order derivatives via autograd as specified
     by the parameters of __init__.
     """
-    def __init__(self, fun, x_shape, hessp=False, hess=False,
-                 twice_diffable=True):
+    def __new__(cls, fun, x_shape, hessp=False, hess=False, twice_diffable=True):
+        if isinstance(fun, Minimizer):
+            assert fun._hessp == hessp
+            assert fun._hess == hess
+            return fun
+        return super(ScalarFunction, cls).__new__(cls)
+
+    def __init__(self, fun, x_shape, hessp=False, hess=False, twice_diffable=True):
         self._fun = fun
         self._x_shape = x_shape
         self._hessp = hessp
