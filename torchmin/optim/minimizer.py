@@ -65,6 +65,7 @@ class Minimizer(Optimizer):
         self._params = self.param_groups[0]['params']
         self._numel_cache = None
         self._closure = None
+        self._result = None
 
     @property
     def nfev(self):
@@ -193,9 +194,9 @@ class Minimizer(Optimizer):
 
         # perform parameter update
         kwargs = {k:v for k,v in self.param_groups[0].items() if k != 'params'}
-        result = minimize(self, x0, **kwargs)
+        self._result = minimize(self, x0, **kwargs)
 
         # set final value
-        self._set_flat_param(result.x)
+        self._set_flat_param(self._result.x)
 
-        return result
+        return self._result.fun

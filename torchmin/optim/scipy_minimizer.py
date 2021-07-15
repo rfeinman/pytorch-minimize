@@ -155,6 +155,7 @@ class ScipyMinimizer(Optimizer):
         self._param_bounds = self.param_groups[0]['bounds']
         self._numel_cache = None
         self._bounds_cache = None
+        self._result = None
 
     def _numel(self):
         if self._numel_cache is None:
@@ -280,12 +281,12 @@ class ScipyMinimizer(Optimizer):
         x0 = to_array(self._gather_flat_param())
 
         # optimize
-        result = optimize.minimize(
+        self._result = optimize.minimize(
             fun, x0, method=method, jac=True, bounds=bounds,
             constraints=constraints, tol=tol, options=options
         )
 
         # set final param
-        self._set_flat_param(to_tensor(result.x))
+        self._set_flat_param(to_tensor(self._result.x))
 
-        return result
+        return to_tensor(self._result.fun)
