@@ -75,4 +75,12 @@ The optimizer API provides an alternative interface based on PyTorch's :mod:`opt
     Minimizer
     Minimizer.step
 
-The :class:`Minimizer` class inherits from :class:`torch.optim.Optimizer` and constructs an object that will hold the state of the provided variables. Unlike the functional API, which expects parameters to be a single Tensor, parameters can be passed to :class:`Minimizer` as iterables of Tensors. When using bound constraints, `bounds` are passed as iterables with same length as `params`, i.e. one bound specification per parameter Tensor.
+The :class:`Minimizer` class inherits from :class:`torch.optim.Optimizer` and constructs an object that holds the state of the provided variables. Unlike the functional API, which expects parameters to be a single Tensor, parameters can be passed to :class:`Minimizer` as iterables of Tensors. The class serves as a wrapper for :func:`minimize` and can use any of its methods (selected via the `method` argument) to perform unconstrained minimization.
+
+.. autosummary::
+    :toctree: generated
+
+    ScipyMinimizer
+    ScipyMinimizer.step
+
+Although the :class:`Minimizer` class will be sufficient for most problems where torch optimizers would be used, it does not support constraints. Another optimizer is provided, :class:`ScipyMinimizer`, which supports parameter bounds and linear/nonlinear constraint functions. This optimizer is a wrapper for :func:`scipy.optimize.minimize`. When using bound constraints, `bounds` are passed as iterables with same length as `params`, i.e. one bound specification per parameter Tensor.

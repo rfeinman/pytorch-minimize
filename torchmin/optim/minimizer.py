@@ -34,7 +34,8 @@ class Minimizer(Optimizer):
         One of the various optimization methods offered in scipy minimize.
         Defaults to 'bfgs'.
     **minimize_kwargs : dict
-        Additional keyword arguments that will be passed to torchmin.minimize()
+        Additional keyword arguments that will be passed to
+        :func:`torchmin.minimize()`.
 
     """
     def __init__(self,
