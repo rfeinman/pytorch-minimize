@@ -1,5 +1,7 @@
 # PyTorch Minimize
 
+For the most up-to-date information on pytorch-minimize, see the docs site: [pytorch-minimize.readthedocs.io](https://pytorch-minimize.readthedocs.io/)
+
 Pytorch-minimize represents a collection of utilities for minimizing multivariate functions in PyTorch. 
 It is inspired heavily by SciPy's `optimize` module and MATLAB's [Optimization Toolbox](https://www.mathworks.com/products/optimization.html). 
 Unlike SciPy and MATLAB, which use numerical approximations of function derivatives, pytorch-minimize uses _real_ first- and second-order derivatives, computed seamlessly behind the scenes with autograd.
@@ -118,9 +120,7 @@ For constrained optimization, the [adversarial examples tutorial](https://github
 
 ## Optimizer API
 
-Coming soon there will be a new, alternative API revolving around the `torch.optim.Optimizer` class. 
-An early prototype can be accessed as follows:
+As an alternative to the functional API, pytorch-minimize also includes an "optimizer" API based on the `torch.optim.Optimizer` class. 
+To access the optimizer class, import as follows:
 
     from torchmin import Minimizer
-
-It has not been rigorously tested, and documentation is currently limited.
