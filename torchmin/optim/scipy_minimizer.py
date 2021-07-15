@@ -90,7 +90,7 @@ def _jacobian(inputs, outputs):
     return _tuple_postprocess(jacobian_output_input, (is_outputs_tuple, is_inputs_tuple))
 
 
-class Minimizer(Optimizer):
+class ScipyMinimizer(Optimizer):
     """A general-purpose PyTorch optimizer for function minimization.
 
     .. note::
