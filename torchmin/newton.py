@@ -312,6 +312,13 @@ def _minimize_newton_exact(
                 d = torch.linalg.solve(hess, g.neg())
             elif handle_npd == 'grad':
                 d = g.neg()
+            elif handle_npd == 'cauchy':
+                gnorm = g.norm(p=2)
+                scale = 1 / gnorm
+                gHg = g.dot(hess.mv(g))
+                if gHg > 0:
+                    scale *= torch.clamp_max_(gnorm.pow(3) / gHg, max=1)
+                d = scale * g.neg()
             elif handle_npd == 'eig':
                 # this setting is experimental! use with caution
                 # TODO: why chose the factor 1.5 here? Seems to work best
