@@ -12,6 +12,7 @@ from torch.linalg import norm
 from scipy.optimize.optimize import OptimizeResult, _status_message
 
 from ..function import ScalarFunction
+from ..optim.minimizer import Minimizer
 
 status_messages = (
     _status_message['success'],
@@ -217,6 +218,11 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         if rho > eta:
             x = x_proposed
             m = m_proposed
+        elif isinstance(sf, Minimizer):
+            # if we are using a Minimizer as our ScalarFunction then we
+            # need to re-compute the previous state because it was
+            # overwritten during the call `subproblem(x_proposed, closure)`
+            m = subproblem(x, closure)
 
         # append the best guess, call back, increment the iteration count
         if return_all:
