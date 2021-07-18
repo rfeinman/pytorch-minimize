@@ -42,4 +42,4 @@ Unlike scipy, jacobian and hessian functions need not be provided to pytorch-min
 Minimizer (optimizer API)
 ---------------------------
 
-Another way to use the optimization tools from pytorch-minimize is via :class:`torchmin.Minimizer`, a pytorch Optimizer class. For a demo on how to use the Minimizer class, see the `MNIST classifier <https://github.com/rfeinman/pytorch-minimize/blob/master/examples/scipy_benchmark.py>`_ tutorial.
+Another way to use the optimization tools from pytorch-minimize is via :class:`torchmin.Minimizer`, a pytorch Optimizer class. For a demo on how to use the Minimizer class, see the `MNIST classifier <https://github.com/rfeinman/pytorch-minimize/blob/master/examples/train_mnist_Minimizer.py>`_ tutorial.
