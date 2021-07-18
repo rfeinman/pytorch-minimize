@@ -1,7 +1,7 @@
 Examples
 =========
 
-This page is a placeholder. The Examples site will be coming soon.
+The examples site is in active development. Check back soon for more complete examples of how to use pytorch-minimize.
 
 Unconstrained minimization
 ---------------------------
@@ -23,9 +23,23 @@ Unconstrained minimization
 Constrained minimization
 ---------------------------
 
-To do.
+For constrained optimization, the `adversarial examples tutorial <https://github.com/rfeinman/pytorch-minimize/blob/master/examples/constrained_optimization_adversarial_examples.ipynb>`_ demonstrates how to use trust-region constrained optimization to generate an optimal adversarial perturbation given a constraint on the perturbation norm.
 
-Nonlinear least-Squares
+Nonlinear least-squares
 ---------------------------
 
-To do.
+Coming soon.
+
+
+Scipy benchmark
+---------------------------
+
+The `SciPy benchmark <https://github.com/rfeinman/pytorch-minimize/blob/master/examples/scipy_benchmark.py>`_ provides a comparison of pytorch-minimize solvers to their analogous solvers from the :mod:`scipy.optimize` module.
+For those transitioning from scipy, this script will help get a feel for the design of the current library.
+Unlike scipy, jacobian and hessian functions need not be provided to pytorch-minimize solvers, and numerical approximations are never used.
+
+
+Minimizer (optimizer API)
+---------------------------
+
+Another way to use the optimization tools from pytorch-minimize is via :class:`torchmin.Minimizer`, a pytorch Optimizer class. For a demo on how to use the Minimizer class, see the `MNIST classifier <https://github.com/rfeinman/pytorch-minimize/blob/master/examples/scipy_benchmark.py>`_ tutorial.
