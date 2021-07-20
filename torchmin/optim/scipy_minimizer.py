@@ -91,7 +91,8 @@ def _jacobian(inputs, outputs):
 
 
 class ScipyMinimizer(Optimizer):
-    """A general-purpose PyTorch optimizer for function minimization.
+    """A PyTorch optimizer for constrained & unconstrained function
+    minimization.
 
     .. note::
         This optimizer is a wrapper for :func:`scipy.optimize.minimize`.

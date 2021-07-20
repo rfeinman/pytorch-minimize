@@ -31,8 +31,8 @@ class Minimizer(Optimizer):
         An iterable of :class:`torch.Tensor` s. Specifies what Tensors
         should be optimized.
     method : str
-        One of the various optimization methods offered in scipy minimize.
-        Defaults to 'bfgs'.
+        Minimization method (algorithm) to use. Must be one of the methods
+        offered in :func:`torchmin.minimize()`. Defaults to 'bfgs'.
     **minimize_kwargs : dict
         Additional keyword arguments that will be passed to
         :func:`torchmin.minimize()`.
