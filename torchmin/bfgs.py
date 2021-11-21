@@ -278,6 +278,11 @@ def _minimize_bfgs_core(
     result = OptimizeResult(fun=f, grad=g, nfev=sf.nfev,
                             status=warnflag, success=(warnflag==0),
                             message=msg, x=x.view_as(x0), nit=n_iter)
+    if not low_mem:
+        if inv_hess:
+            result['hess_inv'] = hess.H
+        else:
+            result['hess'] = hess.B
     if return_all:
         result['allvecs'] = allvecs
 

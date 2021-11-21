@@ -386,7 +386,7 @@ def _minimize_newton_exact(
         print("         Current function value: %f" % f)
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
-    result = OptimizeResult(fun=f, grad=g, nfev=sf.nfev, nfail=nfail,
+    result = OptimizeResult(fun=f, grad=g, hess=hess, nfev=sf.nfev, nfail=nfail,
                             status=warnflag, success=(warnflag==0),
                             message=msg, x=x.view_as(x0), nit=n_iter)
     if return_all:
