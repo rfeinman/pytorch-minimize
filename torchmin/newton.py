@@ -202,9 +202,9 @@ def _minimize_newton_cg(
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
         print("         CG iterations: %d" % ncg)
-    result = OptimizeResult(fun=f, grad=g, nfev=sf.nfev, ncg=ncg,
+    result = OptimizeResult(fun=f, x=x.view_as(x0), grad=g.view_as(x0),
                             status=warnflag, success=(warnflag==0),
-                            message=msg, x=x, nit=n_iter)
+                            message=msg, nit=n_iter, nfev=sf.nfev, ncg=ncg)
     if return_all:
         result['allvecs'] = allvecs
     return result
@@ -386,9 +386,10 @@ def _minimize_newton_exact(
         print("         Current function value: %f" % f)
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
-    result = OptimizeResult(fun=f, grad=g, hess=hess, nfev=sf.nfev, nfail=nfail,
+    result = OptimizeResult(fun=f, x=x.view_as(x0), grad=g.view_as(x0),
+                            hess=hess.view(*x0.shape, *x0.shape),
                             status=warnflag, success=(warnflag==0),
-                            message=msg, x=x.view_as(x0), nit=n_iter)
+                            message=msg, nit=n_iter, nfev=sf.nfev, nfail=nfail)
     if return_all:
         result['allvecs'] = allvecs
     return result

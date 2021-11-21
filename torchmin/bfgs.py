@@ -275,14 +275,14 @@ def _minimize_bfgs_core(
         print("         Current function value: %f" % f)
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
-    result = OptimizeResult(fun=f, grad=g, nfev=sf.nfev,
+    result = OptimizeResult(fun=f, x=x.view_as(x0), grad=g.view_as(x0),
                             status=warnflag, success=(warnflag==0),
-                            message=msg, x=x.view_as(x0), nit=n_iter)
+                            message=msg, nit=n_iter, nfev=sf.nfev)
     if not low_mem:
         if inv_hess:
-            result['hess_inv'] = hess.H
+            result['hess_inv'] = hess.H.view(*x0.shape, *x0.shape)
         else:
-            result['hess'] = hess.B
+            result['hess'] = hess.B.view(*x0.shape, *x0.shape)
     if return_all:
         result['allvecs'] = allvecs
 

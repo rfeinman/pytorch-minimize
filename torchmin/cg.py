@@ -135,9 +135,9 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
         print("         Iterations: %d" % niter)
         print("         Function evaluations: %d" % sf.nfev)
 
-    result = OptimizeResult(x=x, fun=f, grad=g, nit=niter, nfev=sf.nfev,
+    result = OptimizeResult(fun=f, x=x.view_as(x0), grad=g.view_as(x0),
                             status=warnflag, success=(warnflag == 0),
-                            message=msg)
+                            message=msg, nit=niter, nfev=sf.nfev)
     if return_all:
         result['allvecs'] = allvecs
     return result
