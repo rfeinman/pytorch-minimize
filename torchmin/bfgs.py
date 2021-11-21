@@ -86,11 +86,11 @@ class BFGS(HessianUpdateStrategy):
             if self.n_updates == 0:
                 self.H.mul_(rho_inv / y.dot(y))
             torch.addr(
-                torch.chain_matmul(
+                torch.linalg.multi_dot([
                     torch.addr(self.I, s, y, alpha=-rho),
                     self.H,
                     torch.addr(self.I, y, s, alpha=-rho)
-                ),
+                ]),
                 s, s, alpha=rho, out=self.H
             )
         else:
