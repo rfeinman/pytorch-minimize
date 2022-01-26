@@ -93,12 +93,8 @@ class BFGS(HessianUpdateStrategy):
             if self.n_updates == 0:
                 self.B.mul_(rho * y.dot(y))
             Bs = torch.mv(self.B, s)
-            torch.addr(
-                torch.addr(self.B, y, y, alpha=rho),
-                Bs, Bs,
-                alpha=s.dot(Bs).reciprocal().neg(),
-                out=self.B
-            )
+            self.B.addr_(y, y, alpha=rho)
+            self.B.addr_(Bs, Bs, alpha=-1./s.dot(Bs))
 
 
 @torch.no_grad()
