@@ -301,12 +301,12 @@ def _minimize_newton_exact(
         # ===================================================
 
         # Compute search direction with Cholesky solve
-        try:
-            d = torch.cholesky_solve(g.neg().unsqueeze(1),
-                                     torch.linalg.cholesky(hess)).squeeze(1)
-            chol_fail = False
-        except:
-            chol_fail = True
+        L, info = torch.linalg.cholesky_ex(hess)
+        chol_fail = info != 0
+
+        if not chol_fail:
+            d = torch.cholesky_solve(g.neg().unsqueeze(1), L).squeeze(1)
+        else:
             nfail += 1
             if handle_npd == 'lu':
                 d = torch.linalg.solve(hess, g.neg())
