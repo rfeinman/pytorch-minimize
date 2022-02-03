@@ -302,9 +302,8 @@ def _minimize_newton_exact(
 
         # Compute search direction with Cholesky solve
         L, info = torch.linalg.cholesky_ex(hess)
-        chol_fail = info != 0
 
-        if not chol_fail:
+        if info == 0:
             d = torch.cholesky_solve(g.neg().unsqueeze(1), L).squeeze(1)
         else:
             nfail += 1
@@ -356,7 +355,7 @@ def _minimize_newton_exact(
             hess.diagonal().add_(tikhonov)
 
         if disp > 1:
-            print('iter %3d - fval: %0.4f - chol_fail: %r' % (n_iter, f, chol_fail))
+            print('iter %3d - fval: %0.4f - info: %d' % (n_iter, f, info))
         if callback is not None:
             callback(x)
         if return_all:
