@@ -108,6 +108,9 @@ class ScalarFunction(object):
         with torch.enable_grad():
             f = self.fun(x)
             grad = autograd.grad(f, x, create_graph=self._hessp or self._hess)[0]
+        if (self._hessp or self._hess) and grad.grad_fn is None:
+            raise RuntimeError('A 2nd-order derivative was requested but '
+                               'the objective is not twice-differentiable.')
         hessp = None
         hess = None
         if self._hessp:
