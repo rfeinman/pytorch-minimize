@@ -272,9 +272,9 @@ def _minimize_bfgs_core(
                             message=msg, nit=n_iter, nfev=sf.nfev)
     if not low_mem:
         if inv_hess:
-            result['hess_inv'] = hess.H.view(*x0.shape, *x0.shape)
+            result['hess_inv'] = hess.H.view(2 * x0.shape)
         else:
-            result['hess'] = hess.B.view(*x0.shape, *x0.shape)
+            result['hess'] = hess.B.view(2 * x0.shape)
     if return_all:
         result['allvecs'] = allvecs
 

@@ -393,7 +393,7 @@ def _minimize_newton_exact(
         print("         Iterations: %d" % n_iter)
         print("         Function evaluations: %d" % sf.nfev)
     result = OptimizeResult(fun=f, x=x.view_as(x0), grad=g.view_as(x0),
-                            hess=hess.view(*x0.shape, *x0.shape),
+                            hess=hess.view(2 * x0.shape),
                             status=warnflag, success=(warnflag==0),
                             message=msg, nit=n_iter, nfev=sf.nfev, nfail=nfail)
     if return_all:

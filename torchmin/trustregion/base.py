@@ -257,7 +257,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
                             nfev=sf.nfev, nit=k, message=status_messages[warnflag])
 
     if not subproblem.hess_prod:
-        result['hess'] = m.hess.view(*x0.shape, *x0.shape)
+        result['hess'] = m.hess.view(2 * x0.shape)
 
     if return_all:
         result['allvecs'] = allvecs
