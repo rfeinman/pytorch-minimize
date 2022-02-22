@@ -299,7 +299,7 @@ class IterativeSubproblem(BaseQuadraticSubproblem):
                     # The reason for this choice is explained at
                     # ref [3]_, p. 6 (Immediately before the formula
                     # for `tau`).
-                    step_len = torch.min(ta.abs(), tb.abs())
+                    step_len = min(ta, tb, key=torch.abs)
 
                     # Compute the quadratic term  (p.T*H*p)
                     quadratic_term = p.dot(H.mv(p))
