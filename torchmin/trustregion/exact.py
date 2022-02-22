@@ -139,8 +139,10 @@ def singular_leading_submatrix(A, U, k):
     Compute term that makes the leading ``k`` by ``k``
     submatrix from ``A`` singular.
     """
+    u = U[:k-1, k-1]
+
     # Compute delta
-    delta = torch.sum(U[:k-1, k-1]**2) - A[k-1, k-1]
+    delta = u.dot(u) - A[k-1, k-1]
 
     # Initialize v
     v = A.new_zeros(A.shape[0])
@@ -148,7 +150,7 @@ def singular_leading_submatrix(A, U, k):
 
     # Compute the remaining values of v by solving a triangular system.
     if k != 1:
-        v[:k-1] = solve_triangular(U[:k-1, :k-1], -U[:k-1, k-1])
+        v[:k-1] = solve_triangular(U[:k-1, :k-1], -u)
 
     return delta, v
 
