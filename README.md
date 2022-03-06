@@ -77,6 +77,8 @@ The following solvers are available for _unconstrained_ minimization:
 
 - __Newton Exact.__ In some cases, we may prefer a more precise variant of the Newton-Raphson method at the cost of additional complexity. I've also implemented an "exact" variant of Newton's method that computes the full Hessian matrix and uses Cholesky factorization for linear inverse sub-problems. When Cholesky fails--i.e. the Hessian is not positive definite--the solver resorts to one of two options as specified by the user: 1) steepest descent direction (default), or 2) solve the inverse hessian with LU factorization.
 
+- __Levenberg-Marquardt Exact.__  A generalized implementation of the Levenberg-Marquardt method that uses the explicit Hessian to be able to cope with custom loss functions. A robust choice for smaller problems.
+
 - __Trust-Region Newton Conjugate Gradient.__ Description coming soon.
 
 - __Trust-Region Newton Generalized Lanczos (Krylov).__ Description coming soon.
