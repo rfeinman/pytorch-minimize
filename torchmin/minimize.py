@@ -3,6 +3,7 @@ import torch
 from .bfgs import _minimize_bfgs, _minimize_lbfgs
 from .cg import _minimize_cg
 from .newton import _minimize_newton_cg, _minimize_newton_exact
+from .lm_exact import _minimize_lm_exact
 from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
                           _minimize_trust_ncg, _minimize_trust_krylov)
 
@@ -12,6 +13,7 @@ _tolerance_keys = {
     'cg': 'gtol',
     'newton-cg': 'xtol',
     'newton-exact': 'xtol',
+    'lm-exact': 'xtol',
     'dogleg': 'gtol',
     'trust-ncg': 'gtol',
     'trust-exact': 'gtol',
@@ -42,6 +44,7 @@ def minimize(
             - 'cg'
             - 'newton-cg'
             - 'newton-exact'
+            - 'lm-exact'
             - 'dogleg'
             - 'trust-ncg'
             - 'trust-exact'
@@ -74,7 +77,7 @@ def minimize(
     """
     x0 = torch.as_tensor(x0)
     method = method.lower()
-    assert method in ['bfgs', 'l-bfgs', 'cg', 'newton-cg', 'newton-exact',
+    assert method in ['bfgs', 'l-bfgs', 'cg', 'newton-cg', 'newton-exact', 'lm-exact',
                       'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']
     if options is None:
         options = {}
@@ -95,6 +98,8 @@ def minimize(
         return _minimize_newton_cg(fun, x0, **options)
     elif method == 'newton-exact':
         return _minimize_newton_exact(fun, x0, **options)
+    elif method == 'lm-exact':
+        return _minimize_lm_exact(fun, x0, **options)
     elif method == 'dogleg':
         return _minimize_dogleg(fun, x0, **options)
     elif method == 'trust-ncg':
