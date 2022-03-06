@@ -50,7 +50,7 @@ class Minimizer(Optimizer):
             pass
         elif method_ in ['newton-cg', 'trust-ncg', 'trust-krylov']:
             self._hessp = True
-        elif method_ in ['newton-exact', 'dogleg', 'trust-exact']:
+        elif method_ in ['newton-exact', 'lm-exact', 'dogleg', 'trust-exact']:
             self._hess = True
         else:
             raise ValueError('Unknown method {}'.format(method))

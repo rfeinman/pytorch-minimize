@@ -14,7 +14,7 @@ from .function import ScalarFunction
 @torch.no_grad()
 def _minimize_lm_exact(
         fun, x0, max_iter=None, xtol=1e-5, normp=1, callback=None, disp=0,
-        return_all=False, attempts_per_step = 5, lmbd_max = 1e+10, lmbd_min = 1e-10):
+        return_all=False, attempts_per_step = 10, lmbd_max = 1e+10, lmbd_min = 1e-10):
     """Minimize a scalar function of one or more variables using the
     Levenberg-Marquardt method.
 
@@ -89,6 +89,7 @@ def _minimize_lm_exact(
                 break
             
             hess_reg = hess + lmbd * torch.diag(hess.diag())
+            
             # Compute search direction with Cholesky solve
             L, info = torch.linalg.cholesky_ex(hess_reg)
     
@@ -106,9 +107,9 @@ def _minimize_lm_exact(
             f_new = fun(x)
             
             if f_new >= f:             
-                #Increase Levenber parameter unless it's already at its maximum
+                #Increase Levenberg parameter unless it's already at its maximum
                 lmbd = max(10 * lmbd, lmbd_max)
-                #Overwrite the unregularized Hessian
+                #Overwrite the previous Hessian
                 hess = hess_reg
 
             else:
