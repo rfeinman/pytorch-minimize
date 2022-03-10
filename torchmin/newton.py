@@ -319,6 +319,8 @@ def _minimize_newton_exact(
             elif handle_npd == 'grad':
                 d = g.neg()
             elif handle_npd == 'cauchy':
+                # cauchy point for a trust radius of delta=1.
+                # equivalent to 'grad' method with scaled lr
                 gnorm = g.norm(p=2)
                 scale = 1 / gnorm
                 gHg = g.dot(hess.mv(g))
@@ -327,13 +329,12 @@ def _minimize_newton_exact(
                 d = scale * g.neg()
             elif handle_npd == 'eig':
                 # this setting is experimental! use with caution
-                # TODO: why chose the factor 1.5 here? Seems to work best
-                eig0 = eigsh(hess.cpu().numpy(), k=1, which="SA", tol=1e-4,
-                             return_eigenvectors=False).item()
+                # TODO: why use the factor 1.5 here? Seems to work best
+                eig0 = eigsh(hess.cpu().numpy(), k=1, which="SA", tol=1e-4)[0].item()
                 tau = max(1e-3 - 1.5 * eig0, 0)
                 hess.diagonal().add_(tau)
-                d = torch.cholesky_solve(g.neg().unsqueeze(1),
-                                         torch.linalg.cholesky(hess)).squeeze(1)
+                L = torch.linalg.cholesky(hess)
+                d = torch.cholesky_solve(g.neg().unsqueeze(1), L).squeeze(1)
             else:
                 raise RuntimeError('invalid handle_npd encountered.')
 
