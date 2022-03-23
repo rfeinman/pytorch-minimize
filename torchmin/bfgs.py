@@ -2,11 +2,14 @@ from abc import ABC, abstractmethod
 import torch
 from torch import Tensor
 from scipy.optimize import OptimizeResult
-from scipy.optimize.optimize import _status_message
 
 from .function import ScalarFunction
 from .line_search import strong_wolfe
 
+try:
+    from scipy.optimize.optimize import _status_message
+except ImportError:
+    from scipy.optimize._optimize import _status_message
 
 class HessianUpdateStrategy(ABC):
     def __init__(self):

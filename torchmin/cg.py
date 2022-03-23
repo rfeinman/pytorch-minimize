@@ -1,10 +1,13 @@
 import torch
 from scipy.optimize import OptimizeResult
-from scipy.optimize.optimize import _status_message
 
 from .function import ScalarFunction
 from .line_search import strong_wolfe
 
+try:
+    from scipy.optimize.optimize import _status_message
+except ImportError:
+    from scipy.optimize._optimize import _status_message
 
 dot = lambda u,v: torch.dot(u.view(-1), v.view(-1))
 
