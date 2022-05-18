@@ -172,8 +172,8 @@ class VectorFunction(object):
             jacp = JacobianLinearOperator(x, f)
         if self._jac:
             if self._I is None:
-                self._I = torch.eye(x.numel(), dtype=x.dtype, device=x.device)
-            jvp = lambda v: autograd.grad(f, x, v, retain_graph=True)[0]
-            jac = _vmap(jvp)(self._I)
+                self._I = torch.eye(f.numel(), dtype=x.dtype, device=x.device)
+            vjp = lambda v: autograd.grad(f, x, v, retain_graph=True)[0]
+            jac = _vmap(vjp)(self._I)
 
         return vf_value(f=f.detach(), jacp=jacp, jac=jac)
