@@ -6,4 +6,4 @@ from .optim import Minimizer, ScipyMinimizer
 __all__ = ['minimize', 'minimize_constr', 'least_squares',
            'Minimizer', 'ScipyMinimizer']
 
-__version__ = "0.1.0-beta"
+__version__ = "0.0.1"
