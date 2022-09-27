@@ -1,18 +1,18 @@
 from setuptools import setup
 
-packages = [
-    'numpy',
-    'scipy',
-    'torch'
-]
-
-setup(name='torchmin',
-      version='0.0.2',
-      description='Minimization for Pytorch',
-      url='',
-      author=' Reuben Feinman',
-      author_email='',
-      license='MIT Licence',
-      packages=['torchmin'],
-	    zip_safe=False,
-      install_requires=packages)
+setup(
+    name='pytorch-minimize',
+    version='0.0.1',
+    description='Newton and Quasi-Newton optimization with PyTorch',
+    url='https://pytorch-minimize.readthedocs.io',
+    author='Reuben Feinman',
+    author_email='',
+    license='MIT Licence',
+    packages=['torchmin'],
+    zip_safe=False,
+    install_requires=[
+        'numpy>=1.18.0',
+        'scipy>=1.6',
+        'torch>=1.9.0'
+    ]
+)
