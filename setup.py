@@ -1,4 +1,6 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+
+packages = find_packages(exclude=("tests", "tests.*"))
 
 setup(
     name='pytorch-minimize',
@@ -8,7 +10,7 @@ setup(
     author='Reuben Feinman',
     author_email='reuben.feinman@nyu.edu',
     license='MIT Licence',
-    packages=['torchmin'],
+    packages=packages,
     zip_safe=False,
     install_requires=[
         'numpy>=1.18.0',
