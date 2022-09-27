@@ -1,16 +1,22 @@
 Install
 ===========
 
-To install pytorch-minimize, first clone the repository to a location of your choice::
+To install pytorch-minimize, users may either 1) install the official PyPI release via pip, or 2) install a *bleeding edge* distribution from source.
 
+
+**Install via pip (official PyPI release)**::
+
+    pip install pytorch-minimize
+
+**Install from source (bleeding edge)**::
+
+    # clone the latest master to any location
     git clone https://github.com/rfeinman/pytorch-minimize.git
 
-Next, cd to the root directory and install the package with pip::
-
+    # cd to the root directory and install the package with pip
     cd pytorch-minimize
     pip install -e .
 
-Once these steps have been completed, you should be able to make inports such as ``from torchmin import minimize`` from any location on your machine.
 
 **PyTorch requirement**
 

@@ -40,7 +40,11 @@ __Solvers:__ BFGS, L-BFGS, Conjugate Gradient (CG), Newton Conjugate Gradient (N
 
 __Examples:__ See the [Rosenbrock minimization notebook](https://github.com/rfeinman/pytorch-minimize/blob/master/examples/rosen_minimize.ipynb) for a demonstration of function minimization with a handful of different algorithms.
 
-__Install:__
+__Install with pip:__
+
+    pip install pytorch-minimize
+
+__Install from source:__
 
     git clone https://github.com/rfeinman/pytorch-minimize.git
     cd pytorch-minimize
