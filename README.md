@@ -134,3 +134,17 @@ As an alternative to the functional API, pytorch-minimize also includes an "opti
 To access the optimizer class, import as follows:
 
     from torchmin import Minimizer
+
+## Citing this work
+
+If you use pytorch-minimize for academic research, you may cite the library as follows:
+
+```
+@misc{Feinman2021,
+  author = {Feinman, Reuben},
+  title = {Pytorch-minimize: a library for numerical optimization with autograd},
+  publisher = {GitHub},
+  year = {2021},
+  url = {https://github.com/rfeinman/pytorch-minimize},
+}
+```
