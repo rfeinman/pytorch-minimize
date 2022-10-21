@@ -195,8 +195,8 @@ def minimize_constr(
     # handle callbacks
     if callback is not None:
         callback_ = callback
-        callback = lambda x: callback_(
-            torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0))
+        callback = lambda x, state: callback_(
+            torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0), state)
 
     # handle bounds
     if bounds is not None:
