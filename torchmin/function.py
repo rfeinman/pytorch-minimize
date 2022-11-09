@@ -35,7 +35,7 @@ class JacobianLinearOperator(object):
         self.gx = gx
         self.symmetric = symmetric
         # tensor-like properties
-        self.shape = (x.numel(), x.numel())
+        self.shape = (f.numel(), x.numel())
         self.dtype = x.dtype
         self.device = x.device
 
