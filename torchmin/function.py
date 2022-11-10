@@ -64,6 +64,20 @@ class JacobianLinearOperator(object):
         return vjp
 
 
+def jacobian_linear_operator(x, f, symmetric=False):
+    if symmetric:
+        # Use vector-jacobian product (more efficient)
+        gf = gx = None
+    else:
+        # Apply the "double backwards" trick to get true
+        # jacobian-vector product
+        with torch.enable_grad():
+            gf = torch.zeros_like(f, requires_grad=True)
+            gx = autograd.grad(f, x, gf, create_graph=True)[0]
+    return JacobianLinearOperator(x, f, gf, gx, symmetric)
+
+
+
 class ScalarFunction(object):
     """Scalar-valued objective function with autograd backend.
 
@@ -114,7 +128,7 @@ class ScalarFunction(object):
         hessp = None
         hess = None
         if self._hessp:
-            hessp = JacobianLinearOperator(x, grad, symmetric=self._twice_diffable)
+            hessp = jacobian_linear_operator(x, grad, symmetric=self._twice_diffable)
         if self._hess:
             if self._I is None:
                 self._I = torch.eye(x.numel(), dtype=x.dtype, device=x.device)
@@ -169,7 +183,7 @@ class VectorFunction(object):
         jacp = None
         jac = None
         if self._jacp:
-            jacp = JacobianLinearOperator(x, f)
+            jacp = jacobian_linear_operator(x, f)
         if self._jac:
             if self._I is None:
                 self._I = torch.eye(f.numel(), dtype=x.dtype, device=x.device)
