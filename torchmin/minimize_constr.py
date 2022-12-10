@@ -85,7 +85,11 @@ def _build_constr(constr, x0):
                     grad, = torch.autograd.grad(f_(x), x, create_graph=True)
             def matvec(p):
                 p = to_tensor(p)
-                hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
+                if grad.grad_fn is None:
+                    # If grad_fn is None, then grad is constant wrt x, and hess is 0.
+                    hvp = torch.zeros_like(grad)
+                else:
+                    hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
                 return v[0] * hvp.view(-1).cpu().numpy()
             return LinearOperator((numel, numel), matvec=matvec)
 
