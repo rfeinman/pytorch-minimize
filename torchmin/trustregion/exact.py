@@ -64,7 +64,7 @@ def _minimize_trust_exact(fun, x0, **trust_region_options):
 
 
 def solve_triangular(A, b, **kwargs):
-    return torch.triangular_solve(b.unsqueeze(1), A, **kwargs)[0].squeeze(1)
+    return torch.linalg.solve_triangular(A, b.unsqueeze(1), **kwargs)[0].squeeze(1)
 
 
 def solve_cholesky(A, b, **kwargs):
