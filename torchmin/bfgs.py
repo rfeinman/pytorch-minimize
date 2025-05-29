@@ -129,7 +129,7 @@ def _minimize_bfgs_core(
         Maximum number of iterations to perform. Defaults to 200 * x0.numel()
     line_search : str
         Line search specifier. Currently the available options are
-        {'none', 'strong_wolfe'}.
+        {'none', 'strong-wolfe'}.
     gtol : float
         Termination tolerance on 1st-order optimality (gradient norm).
     xtol : float
@@ -306,7 +306,7 @@ def _minimize_bfgs(
         ``200 * x0.numel()``.
     line_search : str
         Line search specifier. Currently the available options are
-        {'none', 'strong_wolfe'}.
+        {'none', 'strong-wolfe'}.
     gtol : float
         Termination tolerance on 1st-order optimality (gradient norm).
     xtol : float
@@ -356,7 +356,7 @@ def _minimize_lbfgs(
         ``200 * x0.numel()``.
     line_search : str
         Line search specifier. Currently the available options are
-        {'none', 'strong_wolfe'}.
+        {'none', 'strong-wolfe'}.
     gtol : float
         Termination tolerance on 1st-order optimality (gradient norm).
     xtol : float
