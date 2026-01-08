@@ -121,19 +121,19 @@ class ScalarFunction(object):
         x = x.detach().requires_grad_(True)
         with torch.enable_grad():
             f = self.fun(x)
-            grad = autograd.grad(f, x, create_graph=self._hessp or self._hess)[0]
-        if (self._hessp or self._hess) and grad.grad_fn is None:
-            raise RuntimeError('A 2nd-order derivative was requested but '
-                               'the objective is not twice-differentiable.')
+            grad = autograd.grad(f, x)[0]
+
         hessp = None
         hess = None
+        if self._hessp or self._hess:
+            jac_fn = torch.func.jacrev(self.fun)
         if self._hessp:
-            hessp = jacobian_linear_operator(x, grad, symmetric=self._twice_diffable)
+            #hessp = jacobian_linear_operator(x, grad, symmetric=twice_diffable)
+            # TODO: make linear operator with `.mv()` and `.rmv()` methods
+            hessp = lambda v: torch.func.jvp(jac_fn, (x,), (v,))[1]
         if self._hess:
-            if self._I is None:
-                self._I = torch.eye(x.numel(), dtype=x.dtype, device=x.device)
-            hvp = lambda v: autograd.grad(grad, x, v, retain_graph=True)[0]
-            hess = _vmap(hvp)(self._I)
+            #hess = torch.func.hessian(self.fun)(x)
+            hess = torch.func.jacfwd(jac_fn)(x)
 
         return sf_value(f=f.detach(), grad=grad.detach(), hessp=hessp, hess=hess)
 
@@ -183,11 +183,10 @@ class VectorFunction(object):
         jacp = None
         jac = None
         if self._jacp:
-            jacp = jacobian_linear_operator(x, f)
+            #jacp = jacobian_linear_operator(x, f)
+            # TODO: make linear operator with `.mv()` and `.rmv()` methods
+            jacp = lambda v: torch.func.jvp(self.fun, (x,), (v,))[1]
         if self._jac:
-            if self._I is None:
-                self._I = torch.eye(f.numel(), dtype=x.dtype, device=x.device)
-            vjp = lambda v: autograd.grad(f, x, v, retain_graph=True)[0]
-            jac = _vmap(vjp)(self._I)
+            jac = torch.func.jacfwd(self.fun)(x)
 
         return vf_value(f=f.detach(), jacp=jacp, jac=jac)
