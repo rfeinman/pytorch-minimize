@@ -103,8 +103,8 @@ class BFGS(HessianUpdateStrategy):
 @torch.no_grad()
 def _minimize_bfgs_core(
         fun, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
-        max_iter=None, line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
-        gtd_tol=1e-9, normp=float('inf'), callback=None, disp=0,
+        max_iter=None, line_search='strong-wolfe', gtol=1e-5, xtol=1e-8,
+        gtd_tol=1e-10, normp=float('inf'), callback=None, disp=0,
         return_all=False):
     """Minimize a multivariate function with BFGS or L-BFGS.
 
@@ -291,7 +291,7 @@ def _minimize_bfgs_core(
 
 def _minimize_bfgs(
         fun, x0, lr=1., inv_hess=True, max_iter=None,
-        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9, gtd_tol=1e-9,
+        line_search='strong-wolfe', gtol=1e-5, xtol=1e-8, gtd_tol=1e-10,
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a multivariate function with BFGS
 
@@ -345,7 +345,7 @@ def _minimize_bfgs(
 
 def _minimize_lbfgs(
         fun, x0, lr=1., history_size=100, max_iter=None,
-        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9, gtd_tol=1e-9,
+        line_search='strong-wolfe', gtol=1e-5, xtol=1e-8, gtd_tol=1e-10,
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a multivariate function with L-BFGS
 
