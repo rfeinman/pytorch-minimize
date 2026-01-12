@@ -3,7 +3,6 @@ from torch import Tensor
 from collections import namedtuple
 import torch
 import torch.autograd as autograd
-from torch._vmap_internals import _vmap
 
 from .optim.minimizer import Minimizer
 
@@ -21,61 +20,21 @@ de_value = namedtuple('de_value', ['f', 'grad'])
 vf_value = namedtuple('vf_value', ['f', 'jacp', 'jac'])
 
 
-@torch.jit.script
+#@torch.jit.script
 class JacobianLinearOperator(object):
-    def __init__(self,
-                 x: Tensor,
-                 f: Tensor,
-                 gf: Optional[Tensor] = None,
-                 gx: Optional[Tensor] = None,
-                 symmetric: bool = False) -> None:
+    def __init__(self, x, func, symmetric: bool = False):
         self.x = x
-        self.f = f
-        self.gf = gf
-        self.gx = gx
+        self.func = func
         self.symmetric = symmetric
-        # tensor-like properties
-        self.shape = (f.numel(), x.numel())
-        self.dtype = x.dtype
-        self.device = x.device
+        _, self.vjp_func = torch.func.vjp(func, x)
 
     def mv(self, v: Tensor) -> Tensor:
         if self.symmetric:
             return self.rmv(v)
-        assert v.shape == self.x.shape
-        gx, gf = self.gx, self.gf
-        assert (gx is not None) and (gf is not None)
-        outputs: List[Tensor] = [gx]
-        inputs: List[Tensor] = [gf]
-        grad_outputs: List[Optional[Tensor]] = [v]
-        jvp = autograd.grad(outputs, inputs, grad_outputs, retain_graph=True)[0]
-        if jvp is None:
-            raise Exception
-        return jvp
+        return torch.func.jvp(self.func, (self.x,), (v,))[1]
 
     def rmv(self, v: Tensor) -> Tensor:
-        assert v.shape == self.f.shape
-        outputs: List[Tensor] = [self.f]
-        inputs: List[Tensor] = [self.x]
-        grad_outputs: List[Optional[Tensor]] = [v]
-        vjp = autograd.grad(outputs, inputs, grad_outputs, retain_graph=True)[0]
-        if vjp is None:
-            raise Exception
-        return vjp
-
-
-def jacobian_linear_operator(x, f, symmetric=False):
-    if symmetric:
-        # Use vector-jacobian product (more efficient)
-        gf = gx = None
-    else:
-        # Apply the "double backwards" trick to get true
-        # jacobian-vector product
-        with torch.enable_grad():
-            gf = torch.zeros_like(f, requires_grad=True)
-            gx = autograd.grad(f, x, gf, create_graph=True)[0]
-    return JacobianLinearOperator(x, f, gf, gx, symmetric)
-
+        return self.vjp_func(v)[0]
 
 
 class ScalarFunction(object):
@@ -120,17 +79,18 @@ class ScalarFunction(object):
         """
         x = x.detach().requires_grad_(True)
         with torch.enable_grad():
+            # TODO: remove duplicate gradient computation that occurs here and
+            # inside JacobianLinearOperator
             f = self.fun(x)
             grad = autograd.grad(f, x)[0]
 
+        jac_fn = None
         hessp = None
         hess = None
         if self._hessp or self._hess:
             jac_fn = torch.func.jacrev(self.fun)
         if self._hessp:
-            #hessp = jacobian_linear_operator(x, grad, symmetric=twice_diffable)
-            # TODO: make linear operator with `.mv()` and `.rmv()` methods
-            hessp = lambda v: torch.func.jvp(jac_fn, (x,), (v,))[1]
+            hessp = JacobianLinearOperator(x, jac_fn, symmetric=self._twice_diffable)
         if self._hess:
             #hess = torch.func.hessian(self.fun)(x)
             hess = torch.func.jacfwd(jac_fn)(x)
@@ -183,9 +143,7 @@ class VectorFunction(object):
         jacp = None
         jac = None
         if self._jacp:
-            #jacp = jacobian_linear_operator(x, f)
-            # TODO: make linear operator with `.mv()` and `.rmv()` methods
-            jacp = lambda v: torch.func.jvp(self.fun, (x,), (v,))[1]
+            jacp = JacobianLinearOperator(x, self.fun)
         if self._jac:
             jac = torch.func.jacfwd(self.fun)(x)
 
