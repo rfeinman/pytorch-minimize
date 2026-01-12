@@ -104,7 +104,8 @@ class BFGS(HessianUpdateStrategy):
 def _minimize_bfgs_core(
         fun, x0, lr=1., low_mem=False, history_size=100, inv_hess=True,
         max_iter=None, line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
-        normp=float('inf'), callback=None, disp=0, return_all=False):
+        gtd_tol=1e-9, normp=float('inf'), callback=None, disp=0,
+        return_all=False):
     """Minimize a multivariate function with BFGS or L-BFGS.
 
     We choose from BFGS/L-BFGS with the `low_mem` argument.
@@ -134,6 +135,10 @@ def _minimize_bfgs_core(
         Termination tolerance on 1st-order optimality (gradient norm).
     xtol : float
         Termination tolerance on function/parameter changes.
+    gtd_tol : float
+        Tolerence used to verify that the search direction is a *descent
+        direction*. The directional derivative `gtd` should be negative for
+        descent; this check ensures that `gtd < -xtol` (sufficiently negative).
     normp : Number or str
         The norm type to use for termination conditions. Can be any value
         supported by `torch.norm` p argument.
@@ -195,7 +200,7 @@ def _minimize_bfgs_core(
         gtd = g.dot(d)
 
         # check if directional derivative is below tolerance
-        if gtd > -xtol:
+        if gtd > -gtd_tol:
             warnflag = 4
             msg = 'A non-descent direction was encountered.'
             break
