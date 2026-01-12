@@ -291,7 +291,7 @@ def _minimize_bfgs_core(
 
 def _minimize_bfgs(
         fun, x0, lr=1., inv_hess=True, max_iter=None,
-        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
+        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9, gtd_tol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a multivariate function with BFGS
 
@@ -316,6 +316,10 @@ def _minimize_bfgs(
         Termination tolerance on 1st-order optimality (gradient norm).
     xtol : float
         Termination tolerance on function/parameter changes.
+    gtd_tol : float
+        Tolerence used to verify that the search direction is a *descent
+        direction*. The directional derivative `gtd` should be negative for
+        descent; this check ensures that `gtd < -xtol` (sufficiently negative).
     normp : Number or str
         The norm type to use for termination conditions. Can be any value
         supported by :func:`torch.norm`.
@@ -335,13 +339,13 @@ def _minimize_bfgs(
     """
     return _minimize_bfgs_core(
         fun, x0, lr, low_mem=False, inv_hess=inv_hess, max_iter=max_iter,
-        line_search=line_search, gtol=gtol, xtol=xtol,
+        line_search=line_search, gtol=gtol, xtol=xtol, gtd_tol=gtd_tol,
         normp=normp, callback=callback, disp=disp, return_all=return_all)
 
 
 def _minimize_lbfgs(
         fun, x0, lr=1., history_size=100, max_iter=None,
-        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9,
+        line_search='strong-wolfe', gtol=1e-5, xtol=1e-9, gtd_tol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a multivariate function with L-BFGS
 
@@ -366,6 +370,10 @@ def _minimize_lbfgs(
         Termination tolerance on 1st-order optimality (gradient norm).
     xtol : float
         Termination tolerance on function/parameter changes.
+    gtd_tol : float
+        Tolerence used to verify that the search direction is a *descent
+        direction*. The directional derivative `gtd` should be negative for
+        descent; this check ensures that `gtd < -xtol` (sufficiently negative).
     normp : Number or str
         The norm type to use for termination conditions. Can be any value
         supported by :func:`torch.norm`.
@@ -386,4 +394,5 @@ def _minimize_lbfgs(
     return _minimize_bfgs_core(
         fun, x0, lr, low_mem=True, history_size=history_size,
         max_iter=max_iter, line_search=line_search, gtol=gtol, xtol=xtol,
-        normp=normp, callback=callback, disp=disp, return_all=return_all)
+        gtd_tol=gtd_tol, normp=normp, callback=callback, disp=disp,
+        return_all=return_all)
