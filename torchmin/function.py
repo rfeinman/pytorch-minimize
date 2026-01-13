@@ -98,7 +98,8 @@ class ScalarFunction(object):
 
         jac_fn = None
         if self._hessp or self._hess:
-            jac_fn = torch.func.jacrev(self.fun)
+            # jac_fn = torch.func.jacrev(self.fun)
+            jac_fn = torch.func.grad(self.fun)
         if self._hessp:
             hessp = JacobianLinearOperator(x, jac_fn, symmetric=self._twice_diffable)
             grad = hessp.f
