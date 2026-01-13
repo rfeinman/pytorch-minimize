@@ -117,6 +117,7 @@ class BaseQuadraticSubproblem(ABC):
         pass
 
 
+@torch.no_grad()
 def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
                            max_trust_radius=1000., eta=0.15, gtol=1e-4,
                            max_iter=None, disp=False, return_all=False,
