@@ -96,16 +96,19 @@ class ScalarFunction(object):
             if not self._hessp:
                 grad = autograd.grad(f, x)[0]
 
-        jac_fn = None
         if self._hessp or self._hess:
-            # jac_fn = torch.func.jacrev(self.fun)
-            jac_fn = torch.func.grad(self.fun)
-        if self._hessp:
-            hessp = JacobianLinearOperator(x, jac_fn, symmetric=self._twice_diffable)
-            grad = hessp.f
-        if self._hess:
-            #hess = torch.func.hessian(self.fun)(x)
-            hess = torch.func.jacfwd(jac_fn)(x)
+            # grad_fn = torch.func.jacrev(self.fun)
+            grad_fn = torch.func.grad(self.fun)
+
+            if self._hessp:
+                hessp = JacobianLinearOperator(x, grad_fn, symmetric=self._twice_diffable)
+                grad = hessp.f
+
+            if self._hess:
+                hess = torch.func.jacfwd(grad_fn)(x)
+
+        # if self._hess:
+        #     hess = torch.func.hessian(self.fun)(x)
 
         return sf_value(f=f.detach(), grad=grad.detach(), hessp=hessp, hess=hess)
 
