@@ -88,19 +88,20 @@ class ScalarFunction(object):
         computing newton/quasi newton directions, etc.
         """
         x = x.detach().requires_grad_(True)
+
+        f = grad = hessp = hess = None
+
         with torch.enable_grad():
-            # TODO: remove duplicate gradient computation that occurs here and
-            # inside JacobianLinearOperator
             f = self.fun(x)
-            grad = autograd.grad(f, x)[0]
+            if not self._hessp:
+                grad = autograd.grad(f, x)[0]
 
         jac_fn = None
-        hessp = None
-        hess = None
         if self._hessp or self._hess:
             jac_fn = torch.func.jacrev(self.fun)
         if self._hessp:
             hessp = JacobianLinearOperator(x, jac_fn, symmetric=self._twice_diffable)
+            grad = hessp.f
         if self._hess:
             #hess = torch.func.hessian(self.fun)(x)
             hess = torch.func.jacfwd(jac_fn)(x)
