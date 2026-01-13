@@ -16,7 +16,7 @@ setup(
     install_requires=[
         'numpy>=1.18.0',
         'scipy>=1.6',
-        'torch>=1.9.0'
+        'torch>=2.0.0'
     ],
     python_requires=">=3.7",
     classifiers=[

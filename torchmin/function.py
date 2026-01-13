@@ -3,7 +3,6 @@ from torch import Tensor
 from collections import namedtuple
 import torch
 import torch.autograd as autograd
-from torch._vmap_internals import _vmap
 
 from .optim.minimizer import Minimizer
 
@@ -21,19 +20,19 @@ de_value = namedtuple('de_value', ['f', 'grad'])
 vf_value = namedtuple('vf_value', ['f', 'jacp', 'jac'])
 
 
-@torch.jit.script
+#@torch.jit.script
 class JacobianLinearOperator(object):
-    def __init__(self,
-                 x: Tensor,
-                 f: Tensor,
-                 gf: Optional[Tensor] = None,
-                 gx: Optional[Tensor] = None,
-                 symmetric: bool = False) -> None:
+    def __init__(self, x, func, symmetric: bool = False):
+        # Compute current function value and vjp callable
+        f, vjp_func = torch.func.vjp(func, x)
+
+        # core properties
         self.x = x
         self.f = f
-        self.gf = gf
-        self.gx = gx
+        self.func = func
+        self.vjp_func = vjp_func
         self.symmetric = symmetric
+
         # tensor-like properties
         self.shape = (f.numel(), x.numel())
         self.dtype = x.dtype
@@ -42,40 +41,10 @@ class JacobianLinearOperator(object):
     def mv(self, v: Tensor) -> Tensor:
         if self.symmetric:
             return self.rmv(v)
-        assert v.shape == self.x.shape
-        gx, gf = self.gx, self.gf
-        assert (gx is not None) and (gf is not None)
-        outputs: List[Tensor] = [gx]
-        inputs: List[Tensor] = [gf]
-        grad_outputs: List[Optional[Tensor]] = [v]
-        jvp = autograd.grad(outputs, inputs, grad_outputs, retain_graph=True)[0]
-        if jvp is None:
-            raise Exception
-        return jvp
+        return torch.func.jvp(self.func, (self.x,), (v,))[1]
 
     def rmv(self, v: Tensor) -> Tensor:
-        assert v.shape == self.f.shape
-        outputs: List[Tensor] = [self.f]
-        inputs: List[Tensor] = [self.x]
-        grad_outputs: List[Optional[Tensor]] = [v]
-        vjp = autograd.grad(outputs, inputs, grad_outputs, retain_graph=True)[0]
-        if vjp is None:
-            raise Exception
-        return vjp
-
-
-def jacobian_linear_operator(x, f, symmetric=False):
-    if symmetric:
-        # Use vector-jacobian product (more efficient)
-        gf = gx = None
-    else:
-        # Apply the "double backwards" trick to get true
-        # jacobian-vector product
-        with torch.enable_grad():
-            gf = torch.zeros_like(f, requires_grad=True)
-            gx = autograd.grad(f, x, gf, create_graph=True)[0]
-    return JacobianLinearOperator(x, f, gf, gx, symmetric)
-
+        return self.vjp_func(v)[0]
 
 
 class ScalarFunction(object):
@@ -119,21 +88,27 @@ class ScalarFunction(object):
         computing newton/quasi newton directions, etc.
         """
         x = x.detach().requires_grad_(True)
+
+        f = grad = hessp = hess = None
+
         with torch.enable_grad():
             f = self.fun(x)
-            grad = autograd.grad(f, x, create_graph=self._hessp or self._hess)[0]
-        if (self._hessp or self._hess) and grad.grad_fn is None:
-            raise RuntimeError('A 2nd-order derivative was requested but '
-                               'the objective is not twice-differentiable.')
-        hessp = None
-        hess = None
-        if self._hessp:
-            hessp = jacobian_linear_operator(x, grad, symmetric=self._twice_diffable)
-        if self._hess:
-            if self._I is None:
-                self._I = torch.eye(x.numel(), dtype=x.dtype, device=x.device)
-            hvp = lambda v: autograd.grad(grad, x, v, retain_graph=True)[0]
-            hess = _vmap(hvp)(self._I)
+            if not self._hessp:
+                grad = autograd.grad(f, x)[0]
+
+        if self._hessp or self._hess:
+            # grad_fn = torch.func.jacrev(self.fun)
+            grad_fn = torch.func.grad(self.fun)
+
+            if self._hessp:
+                hessp = JacobianLinearOperator(x, grad_fn, symmetric=self._twice_diffable)
+                grad = hessp.f
+
+            if self._hess:
+                hess = torch.func.jacfwd(grad_fn)(x)
+
+        # if self._hess:
+        #     hess = torch.func.hessian(self.fun)(x)
 
         return sf_value(f=f.detach(), grad=grad.detach(), hessp=hessp, hess=hess)
 
@@ -183,11 +158,8 @@ class VectorFunction(object):
         jacp = None
         jac = None
         if self._jacp:
-            jacp = jacobian_linear_operator(x, f)
+            jacp = JacobianLinearOperator(x, self.fun)
         if self._jac:
-            if self._I is None:
-                self._I = torch.eye(f.numel(), dtype=x.dtype, device=x.device)
-            vjp = lambda v: autograd.grad(f, x, v, retain_graph=True)[0]
-            jac = _vmap(vjp)(self._I)
+            jac = torch.func.jacfwd(self.fun)(x)
 
         return vf_value(f=f.detach(), jacp=jacp, jac=jac)
