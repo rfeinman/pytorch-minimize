@@ -184,7 +184,10 @@ def _minimize_newton_cg(
         if disp > 1:
             print('iter %3d - fval: %0.4f' % (n_iter, f))
         if callback is not None:
-            callback(x)
+            if callback(x):
+                warnflag = 1
+                msg = 'Stopped by the user through the callback function.'
+                break
         if return_all:
             allvecs.append(x)
 
@@ -369,7 +372,10 @@ def _minimize_newton_exact(
         if disp > 1:
             print('iter %3d - fval: %0.4f - info: %d' % (n_iter, f, info))
         if callback is not None:
-            callback(x)
+            if callback(x):
+                warnflag = 1
+                msg = 'Stopped by the user through the callback function.'
+                break
         if return_all:
             allvecs.append(x)
 
