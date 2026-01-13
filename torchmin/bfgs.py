@@ -226,7 +226,11 @@ def _minimize_bfgs_core(
         if return_all:
             allvecs.append(x_new)
         if callback is not None:
-            callback(x_new)
+            if callback(x_new):
+                warnflag = 1
+                msg = 'Stopped by the user through the callback function.'
+                break
+
 
         # ================================
         #   update hessian approximation
