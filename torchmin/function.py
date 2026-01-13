@@ -23,10 +23,20 @@ vf_value = namedtuple('vf_value', ['f', 'jacp', 'jac'])
 #@torch.jit.script
 class JacobianLinearOperator(object):
     def __init__(self, x, func, symmetric: bool = False):
+        # Compute current function value and vjp callable
+        f, vjp_func = torch.func.vjp(func, x)
+
+        # core properties
         self.x = x
+        self.f = f
         self.func = func
+        self.vjp_func = vjp_func
         self.symmetric = symmetric
-        _, self.vjp_func = torch.func.vjp(func, x)
+
+        # tensor-like properties
+        self.shape = (f.numel(), x.numel())
+        self.dtype = x.dtype
+        self.device = x.device
 
     def mv(self, v: Tensor) -> Tensor:
         if self.symmetric:
