@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from torchmin.frankwolfe import (
+from torchmin.constrained.frankwolfe import (
     _minimize_constr_birkhoff_polytope,
     _minimize_constr_tracenorm,
 )

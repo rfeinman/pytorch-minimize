@@ -3,7 +3,7 @@
 TODO: rewrite this with `pytest`.
 """
 import torch
-from torchmin.lbfgsb import _minimize_constr_lbfgsb
+from torchmin.constrained.lbfgsb import _minimize_constr_lbfgsb
 
 
 def test_simple_quadratic():

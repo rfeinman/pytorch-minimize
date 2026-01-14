@@ -2,7 +2,7 @@ import torch
 from torch import Tensor
 from scipy.optimize import OptimizeResult
 
-from .function import ScalarFunction
+from ..function import ScalarFunction
 
 try:
     from scipy.optimize.optimize import _status_message

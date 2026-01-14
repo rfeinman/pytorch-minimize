@@ -7,7 +7,7 @@ from scipy.optimize import (
 )
 from scipy.sparse.linalg import svds
 
-from .function import ScalarFunction
+from ..function import ScalarFunction
 
 try:
     from scipy.optimize.optimize import _status_message

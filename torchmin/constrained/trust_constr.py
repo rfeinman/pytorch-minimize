@@ -124,7 +124,7 @@ def _build_bounds(bounds, x0):
 
 
 @torch.no_grad()
-def minimize_constr(
+def _minimize_trust_constr(
         f, x0, constr=None, bounds=None, max_iter=None, tol=None, callback=None,
         disp=0, **kwargs):
     """Minimize a scalar function of one or more variables subject to
