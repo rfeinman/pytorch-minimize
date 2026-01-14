@@ -133,7 +133,7 @@ def _gradient_projection(x, g, lb, ub):
 
 
 @torch.no_grad()
-def _minimize_lbfgsb(
+def _minimize_constr_lbfgsb(
         fun, x0, bounds=None, lr=1.0, history_size=10,
         max_iter=None, gtol=1e-5, ftol=1e-9,
         normp=float('inf'), callback=None, disp=0, return_all=False):

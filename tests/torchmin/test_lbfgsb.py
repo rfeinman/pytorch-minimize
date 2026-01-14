@@ -3,7 +3,7 @@
 TODO: rewrite this with `pytest`.
 """
 import torch
-from torchmin.lbfgsb import _minimize_lbfgsb
+from torchmin.lbfgsb import _minimize_constr_lbfgsb
 
 
 def test_simple_quadratic():
@@ -25,7 +25,7 @@ def test_simple_quadratic():
     lb = torch.tensor([0.0, 0.0])
     ub = torch.tensor([1.5, 2.0])
 
-    result = _minimize_lbfgsb(
+    result = _minimize_constr_lbfgsb(
         fun, x0, bounds=(lb, ub),
         gtol=1e-6, ftol=1e-9, disp=1
     )
@@ -68,7 +68,7 @@ def test_rosenbrock():
     lb = torch.tensor([-2.0, -2.0])
     ub = torch.tensor([2.0, 2.0])
 
-    result = _minimize_lbfgsb(
+    result = _minimize_constr_lbfgsb(
         rosenbrock, x0, bounds=(lb, ub),
         gtol=1e-6, ftol=1e-9, max_iter=100, disp=1
     )
@@ -111,7 +111,7 @@ def test_active_constraints():
     lb = torch.ones(n)
     ub = torch.ones(n) * 10.0
 
-    result = _minimize_lbfgsb(
+    result = _minimize_constr_lbfgsb(
         fun, x0, bounds=(lb, ub),
         gtol=1e-6, ftol=1e-9, disp=1
     )
