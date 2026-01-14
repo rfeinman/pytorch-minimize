@@ -16,7 +16,7 @@ except ImportError:
 
 
 @torch.no_grad()
-def minimize_constr_tracenorm(
+def _minimize_constr_tracenorm(
         fun, x0, t, max_iter=None, gtol=1e-5, normp=float('inf'),
         callback=None, disp=0):
     """Minimize a scalar function of matrix, constrained to have trace-norm
@@ -95,7 +95,7 @@ def minimize_constr_tracenorm(
 
 
 @torch.no_grad()
-def minimize_constr_birkhoff_polytope(
+def _minimize_constr_birkhoff_polytope(
         fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
         callback=None, disp=0):
     """Minimize a scalar function of a square matrix, constrained to lie in
