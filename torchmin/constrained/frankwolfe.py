@@ -17,7 +17,7 @@ except ImportError:
 
 
 @torch.no_grad()
-def _minimize_constr_frankwolfe(
+def _minimize_frankwolfe(
         fun, x0, constr='tracenorm', t=None, max_iter=None, gtol=1e-5,
         normp=float('inf'), callback=None, disp=0):
     """Minimize a scalar function of a matrix with Frank-Wolfe (a.k.a.
