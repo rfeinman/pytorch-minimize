@@ -1,10 +1,7 @@
 import pytest
 import torch
 
-from torchmin.constrained.frankwolfe import (
-    _minimize_constr_birkhoff_polytope,
-    _minimize_constr_tracenorm,
-)
+from torchmin.constrained.frankwolfe import _minimize_constr_frankwolfe
 
 
 def test_birkhoff_polytope():
@@ -16,7 +13,7 @@ def test_birkhoff_polytope():
 
     init_P = torch.eye(n)
     init_err = torch.sum((X - init_P @ Y) ** 2)
-    res = _minimize_constr_birkhoff_polytope(fun, init_P)
+    res = _minimize_constr_frankwolfe(fun, init_P, constr='birkhoff')
     est_P = res.x
     final_err = torch.sum((X - est_P @ Y) ** 2)
     torch.testing.assert_close(est_P.sum(0), torch.ones(n))
@@ -29,10 +26,10 @@ def test_tracenorm():
         return torch.sum((X - torch.eye(5)) ** 2)
 
     init_X = torch.zeros((5, 5))
-    res = _minimize_constr_tracenorm(fun, init_X, 5.)
+    res = _minimize_constr_frankwolfe(fun, init_X, constr='tracenorm', t=5.0)
     est_X = res.x
     torch.testing.assert_close(est_X, torch.eye(5), rtol=1e-2, atol=1e-2)
 
-    res = _minimize_constr_tracenorm(fun, init_X, 1.)
+    res = _minimize_constr_frankwolfe(fun, init_X, constr='tracenorm', t=1.0)
     est_X = res.x
     torch.testing.assert_close(est_X, 0.2*torch.eye(5), rtol=1e-2, atol=1e-2)
