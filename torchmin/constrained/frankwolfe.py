@@ -1,7 +1,7 @@
 import warnings
 import numpy as np
 import torch
-from torch import Tensor
+from numbers import Number
 from scipy.optimize import (
     linear_sum_assignment,
     OptimizeResult,
@@ -66,6 +66,8 @@ def _minimize_constr_frankwolfe(
     if constr in {'tracenorm', 'trace-norm'}:
         assert t is not None, \
             f'Argument `t` is required when using the trace-norm constraint.'
+        assert isinstance(t, Number), \
+            f'Argument `t` must be a Number but got {type(t)}'
         constr = 'tracenorm'
     elif constr in {'birkhoff', 'birkhoff-polytope'}:
         if t is not None:
