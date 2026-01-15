@@ -106,8 +106,9 @@ def _minimize_constr_frankwolfe(
 
         if constr == 'tracenorm':
             u, s, vh = svds(g.detach().numpy(), k=1)
+            uvh = x.new_tensor(u @ vh)
             alpha = 2. / (niter + 2.)
-            x = (1 - alpha) * x + alpha * Tensor(-t * u @ vh)
+            x = torch.lerp(x, -t * uvh, weight=alpha)
         elif constr == 'birkhoff':
             row_ind, col_ind = linear_sum_assignment(g.detach().numpy())
             alpha = 2. / (niter + 2.)
