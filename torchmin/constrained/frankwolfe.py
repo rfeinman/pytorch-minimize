@@ -77,6 +77,11 @@ def _minimize_constr_frankwolfe(
     else:
         raise ValueError(f'Invalid constr: "{constr}".')
 
+    if x0.ndim != 2:
+        raise ValueError(
+            f'Optimization variable `x` must be a matrix to use Frank-Wolfe.'
+        )
+
     m, n = x0.shape
 
     if constr == 'birkhoff':
