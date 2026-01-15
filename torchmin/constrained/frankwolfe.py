@@ -64,7 +64,8 @@ def _minimize_constr_frankwolfe(
     assert isinstance(constr, str)
     constr = constr.lower()
     if constr in {'tracenorm', 'trace-norm'}:
-        assert t is not None
+        assert t is not None, \
+            f'Argument `t` is required when using the trace-norm constraint.'
         constr = 'tracenorm'
     elif constr in {'birkhoff', 'birkhoff-polytope'}:
         if t is not None:
