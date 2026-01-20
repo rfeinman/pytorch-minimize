@@ -145,3 +145,55 @@ class TestActiveConstraints:
         assert constraint_value <= ub + TOLERANCE, (
             f"Constraint violated: {constraint_value:.6f} > {ub}"
         )
+
+
+def test_frankwolfe_birkhoff_polytope():
+    n, d = 5, 10
+    X = torch.randn(n, d)
+    Y = torch.flipud(torch.eye(n)) @ X
+
+    def fun(P):
+        return torch.sum((X @ X.T @ P - P @ Y @ Y.T) ** 2)
+
+    init_P = torch.eye(n)
+    init_err = torch.sum((X - init_P @ Y) ** 2)
+    res = minimize_constr(
+        fun,
+        init_P,
+        method='frank-wolfe',
+        constr='birkhoff',
+    )
+    est_P = res.x
+    final_err = torch.sum((X - est_P @ Y) ** 2)
+    torch.testing.assert_close(est_P.sum(0), torch.ones(n))
+    torch.testing.assert_close(est_P.sum(1), torch.ones(n))
+    assert final_err < 0.01 * init_err
+
+
+def test_frankwolfe_tracenorm():
+    dim = 5
+    init_X = torch.zeros((dim, dim))
+    eye = torch.eye(dim)
+
+    def fun(X):
+        return torch.sum((X - eye) ** 2)
+
+    res = minimize_constr(
+        fun,
+        init_X,
+        method='frank-wolfe',
+        constr='tracenorm',
+        options=dict(t=5.0),
+    )
+    est_X = res.x
+    torch.testing.assert_close(est_X, eye, rtol=1e-2, atol=1e-2)
+
+    res = minimize_constr(
+        fun,
+        init_X,
+        method='frank-wolfe',
+        constr='tracenorm',
+        options=dict(t=1.0),
+    )
+    est_X = res.x
+    torch.testing.assert_close(est_X, 0.2 * eye, rtol=1e-2, atol=1e-2)
