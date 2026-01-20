@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from torchmin import minimize, minimize_constr
+# from torchmin.constrained.trust_constr import _minimize_trust_constr as minimize_constr
 from torchmin.benchmarks import rosen
 
 
@@ -101,6 +102,7 @@ class TestInactiveConstraints:
         result = minimize_constr(
             rosen,
             rosen_start,
+            method='trust-constr',
             constr=dict(fun=constraint_fun, ub=10.),
             max_iter=MAX_ITER,
             disp=0
@@ -132,6 +134,7 @@ class TestActiveConstraints:
         result = minimize_constr(
             rosen,
             rosen_start,
+            method='trust-constr',
             constr=dict(fun=constraint_fun, ub=ub),
             max_iter=MAX_ITER,
             disp=0

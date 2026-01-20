@@ -45,8 +45,15 @@ The :func:`minimize` function is a general utility for *unconstrained* minimizat
 
 The :func:`minimize_constr` function is a general utility for *constrained* minimization. Algorithms for constrained minimization use Newton and Quasi-Newton methods on the KKT conditions of the constrained optimization problem.
 
+.. toctree::
+
+    minimize-constr-lbfgsb
+    minimize-constr-frankwolfe
+    minimize-constr-trust-constr
+
+
 .. note::
-    The :func:`minimize_constr` function is currently in early beta. Unlike :func:`minimize`--which uses custom, pure PyTorch backend--the constrained solver is a wrapper for SciPy's 'trust-constr' minimization method. CUDA tensors are supported, but CUDA will only be used for function and gradient evaluation, with the remaining solver computations performed on CPU (with numpy arrays).
+    The *trust-constr* constrained solver is currently a wrapper for SciPy's 'trust-constr' minimization method. CUDA tensors are supported, but CUDA will only be used for function and gradient evaluation, with the remaining solver computations performed on CPU (with numpy arrays).
 
 
 **Nonlinear least-squares**
