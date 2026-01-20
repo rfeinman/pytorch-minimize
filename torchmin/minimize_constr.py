@@ -42,8 +42,7 @@ def minimize_constr(
         The minimization routine to use. Should be one of the following:
 
             - 'l-bfgs-b'
-            - 'tracenorm'
-            - 'birkhoff_polytope'
+            - 'frank-wolfe'
             - 'trust-constr'
 
         If no method is provided, a default method will be selected based
@@ -74,6 +73,9 @@ def minimize_constr(
     tol : float, optional
         Tolerance for termination. For detailed control, use solver-specific
         options.
+    options : dict, optional
+        A dictionary of keyword arguments to pass to the selected minimization
+        routine.
     callback : callable, optional
         Function to call after each iteration with the current parameter
         state, e.g. ``callback(x)``.
@@ -84,9 +86,6 @@ def minimize_constr(
             * 1 : display a termination report.
             * 2 : display progress during iterations.
             * 3 : display progress during iterations (more complete report).
-    **kwargs
-        Additional keyword arguments passed to SciPy's trust-constr solver.
-        See options `here <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_.
 
     Returns
     -------
