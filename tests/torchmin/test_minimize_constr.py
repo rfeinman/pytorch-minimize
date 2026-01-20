@@ -228,8 +228,14 @@ def test_lbfgsb_simple_quadratic():
     expected_x = torch.tensor([1.5, 1.0])
     expected_f = 0.25
 
-    assert torch.allclose(result.x, expected_x, atol=1e-4), \
-        f"Solution {result.x} not close to expected {expected_x}"
+    torch.testing.assert_close(
+        result.x,
+        expected_x,
+        rtol=1e-5,
+        atol=1e-4,
+        msg=f"Solution {result.x} not close to expected {expected_x}"
+    )
+
     assert abs(result.fun - expected_f) < 1e-4, \
         f"Function value {result.fun} not close to expected {expected_f}"
 
@@ -258,8 +264,14 @@ def test_lbfgsb_rosenbrock():
     # Check if close to expected solution
     expected_x = torch.tensor([1.0, 1.0])
 
-    assert torch.allclose(result.x, expected_x, atol=1e-3), \
-        f"Solution {result.x} not close to expected {expected_x}"
+    torch.testing.assert_close(
+        result.x,
+        expected_x,
+        rtol=1e-5,
+        atol=1e-3,
+        msg=f"Solution {result.x} not close to expected {expected_x}"
+    )
+
     assert result.fun < 1e-6, \
         f"Function value {result.fun} not close to 0"
 
@@ -289,10 +301,17 @@ def test_lbfgsb_active_constraints():
         options=dict(gtol=1e-6, ftol=1e-9),
     )
 
+    # Check if close to expected solution
     expected_x = torch.ones(n)
     expected_f = float(n)
 
-    assert torch.allclose(result.x, expected_x, atol=1e-4), \
-        f"Solution {result.x} not close to expected {expected_x}"
+    torch.testing.assert_close(
+        result.x,
+        expected_x,
+        rtol=1e-5,
+        atol=1e-4,
+        msg=f"Solution {result.x} not close to expected {expected_x}"
+    )
+
     assert abs(result.fun - expected_f) < 1e-4, \
         f"Function value {result.fun} not close to expected {expected_f}"
