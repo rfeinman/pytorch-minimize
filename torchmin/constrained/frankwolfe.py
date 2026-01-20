@@ -23,13 +23,14 @@ def _minimize_frankwolfe(
     """Minimize a scalar function of a matrix with Frank-Wolfe (a.k.a.
     conditional gradient).
 
-    The following constraints are currently supported:
+    The algorithm is described in [1]_. The following constraints are currently 
+    supported:
 
         - Trace norm. The matrix is constrained to have trace norm (a.k.a.
-        nuclear norm) less than t.
+          nuclear norm) less than t.
         - Birkhoff polytope. The matrix is constrained to lie in the Birkhoff
-        polytope, i.e. over the space of doubly stochastic matrices. Requires
-        a square matrix.
+          polytope, i.e. over the space of doubly stochastic matrices. Requires
+          a square matrix.
 
     Parameters
     ----------
@@ -59,6 +60,11 @@ def _minimize_frankwolfe(
     -------
     result : OptimizeResult
         Result of the optimization routine.
+
+    References
+    ----------
+    .. [1] Martin Jaggi, "Revisiting Frank-Wolfe: Projection-Free Sparse Convex
+       Optimization", ICML 2013.
 
     """
     assert isinstance(constr, str)

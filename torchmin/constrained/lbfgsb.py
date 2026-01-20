@@ -139,7 +139,7 @@ def _minimize_lbfgsb(
         normp=float('inf'), callback=None, disp=0, return_all=False):
     """Minimize a scalar function with L-BFGS-B.
 
-    L-BFGS-B is a limited-memory quasi-Newton method for bound-constrained
+    L-BFGS-B [1]_ is a limited-memory quasi-Newton method for bound-constrained
     optimization. It extends L-BFGS to handle box constraints.
 
     Parameters
@@ -179,9 +179,9 @@ def _minimize_lbfgsb(
 
     References
     ----------
-    Byrd, R. H., Lu, P., Nocedal, J., & Zhu, C. (1995). A limited memory
-    algorithm for bound constrained optimization. SIAM Journal on
-    Scientific Computing, 16(5), 1190-1208.
+    .. [1] Byrd, R. H., Lu, P., Nocedal, J., & Zhu, C. (1995). A limited memory
+       algorithm for bound constrained optimization. SIAM Journal on
+       Scientific Computing, 16(5), 1190-1208.
     """
     lr = float(lr)
     disp = int(disp)

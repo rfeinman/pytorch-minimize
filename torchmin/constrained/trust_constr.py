@@ -133,8 +133,8 @@ def _minimize_trust_constr(
     .. note::
         This is a wrapper for SciPy's
         `'trust-constr' <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_
-        method. It uses autograd behind the scenes to build jacobian & hessian
-        callables before invoking scipy. Inputs and objectivs should use
+        method. It uses autograd behind the scenes to build Jacobian & Hessian
+        callables before invoking scipy. Inputs and objectives should use
         PyTorch tensors like other routines. CUDA is supported; however,
         data will be transferred back-and-forth between GPU/CPU.
 
@@ -150,7 +150,7 @@ def _minimize_trust_constr(
 
             * fun (callable) - Constraint function
             * lb (Tensor or float, optional) - Constraint lower bounds
-            * ub : (Tensor or float, optional) - Constraint upper bounds
+            * ub (Tensor or float, optional) - Constraint upper bounds
 
         One of either `lb` or `ub` must be provided. When `lb` == `ub` it is
         interpreted as an equality constraint.
