@@ -17,11 +17,9 @@ def test_equivalent_bounds(method):
         return minimize_constr(
             rosen,
             x0,
-            # method='l-bfgs-b',
             method=method,
             bounds=bounds,
             tol=1e-6,
-            # disp=1,
         )
 
     def assert_equivalent(src_result, tgt_result):
