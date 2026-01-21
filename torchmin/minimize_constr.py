@@ -94,9 +94,9 @@ def minimize_constr(
     bounds and/or constraints.
 
     .. note::
-        The `trust-constr` method is currently a wrapper for
-        `SciPy's trustconstr <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_
-        implementation.
+        Method ``'trust-constr'`` is currently a wrapper for SciPy's 
+        `trust-constr <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_ 
+        solver.
 
     Parameters
     ----------
