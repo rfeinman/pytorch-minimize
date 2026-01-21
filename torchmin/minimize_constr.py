@@ -1,142 +1,102 @@
-import warnings
 import numbers
-import torch
 import numpy as np
-from scipy.optimize import minimize, Bounds, NonlinearConstraint
-from scipy.sparse.linalg import LinearOperator
+import torch
+from scipy.optimize import Bounds
 
-_constr_keys = {'fun', 'lb', 'ub', 'jac', 'hess', 'hessp', 'keep_feasible'}
-_bounds_keys = {'lb', 'ub', 'keep_feasible'}
-
-
-def _build_obj(f, x0):
-    numel = x0.numel()
-
-    def to_tensor(x):
-        return torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0)
-
-    def f_with_jac(x):
-        x = to_tensor(x).requires_grad_(True)
-        with torch.enable_grad():
-            fval = f(x)
-        grad, = torch.autograd.grad(fval, x)
-        return fval.detach().cpu().numpy(), grad.view(-1).cpu().numpy()
-
-    def f_hess(x):
-        x = to_tensor(x).requires_grad_(True)
-        with torch.enable_grad():
-            fval = f(x)
-            grad, = torch.autograd.grad(fval, x, create_graph=True)
-        def matvec(p):
-            p = to_tensor(p)
-            hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
-            return hvp.view(-1).cpu().numpy()
-        return LinearOperator((numel, numel), matvec=matvec)
-
-    return f_with_jac, f_hess
+from .constrained.lbfgsb import _minimize_lbfgsb
+from .constrained.frankwolfe import _minimize_frankwolfe
+from .constrained.trust_constr import _minimize_trust_constr
 
 
-def _build_constr(constr, x0):
-    assert isinstance(constr, dict)
-    assert set(constr.keys()).issubset(_constr_keys)
-    assert 'fun' in constr
-    assert 'lb' in constr or 'ub' in constr
-    if 'lb' not in constr:
-        constr['lb'] = -np.inf
-    if 'ub' not in constr:
-        constr['ub'] = np.inf
-    f_ = constr['fun']
-    numel = x0.numel()
-
-    def to_tensor(x):
-        return torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0)
-
-    def f(x):
-        x = to_tensor(x)
-        return f_(x).cpu().numpy()
-
-    def f_jac(x):
-        x = to_tensor(x)
-        if 'jac' in constr:
-            grad = constr['jac'](x)
-        else:
-            x.requires_grad_(True)
-            with torch.enable_grad():
-                grad, = torch.autograd.grad(f_(x), x)
-        return grad.view(-1).cpu().numpy()
-
-    def f_hess(x, v):
-        x = to_tensor(x)
-        if 'hess' in constr:
-            hess = constr['hess'](x)
-            return v[0] * hess.view(numel, numel).cpu().numpy()
-        elif 'hessp' in constr:
-            def matvec(p):
-                p = to_tensor(p)
-                hvp = constr['hessp'](x, p)
-                return v[0] * hvp.view(-1).cpu().numpy()
-            return LinearOperator((numel, numel), matvec=matvec)
-        else:
-            x.requires_grad_(True)
-            with torch.enable_grad():
-                if 'jac' in constr:
-                    grad = constr['jac'](x)
-                else:
-                    grad, = torch.autograd.grad(f_(x), x, create_graph=True)
-            def matvec(p):
-                p = to_tensor(p)
-                if grad.grad_fn is None:
-                    # If grad_fn is None, then grad is constant wrt x, and hess is 0.
-                    hvp = torch.zeros_like(grad)
-                else:
-                    hvp, = torch.autograd.grad(grad, x, p, retain_graph=True)
-                return v[0] * hvp.view(-1).cpu().numpy()
-            return LinearOperator((numel, numel), matvec=matvec)
-
-    return NonlinearConstraint(
-        fun=f, lb=constr['lb'], ub=constr['ub'],
-        jac=f_jac, hess=f_hess,
-        keep_feasible=constr.get('keep_feasible', False))
+_tolerance_keys = {
+    'l-bfgs-b': 'gtol',
+    'frank-wolfe': 'gtol',
+    'trust-constr': 'tol',
+}
 
 
-def _check_bound(val, x0):
-    if isinstance(val, numbers.Number):
-        return np.full(x0.numel(), val)
-    elif isinstance(val, torch.Tensor):
-        assert val.numel() == x0.numel()
-        return val.detach().cpu().numpy().flatten()
-    elif isinstance(val, np.ndarray):
-        assert val.size == x0.numel()
-        return val.flatten()
+def _maybe_to_number(val):
+    if isinstance(val, np.ndarray) and val.size == 1:
+        return val.item()
+    elif isinstance(val, torch.Tensor) and val.numel() == 1:
+        return val.item()
     else:
-        raise ValueError('Bound value has unrecognized format.')
+        return val
 
 
-def _build_bounds(bounds, x0):
-    assert isinstance(bounds, dict)
-    assert set(bounds.keys()).issubset(_bounds_keys)
-    assert 'lb' in bounds or 'ub' in bounds
-    lb = _check_bound(bounds.get('lb', -np.inf), x0)
-    ub = _check_bound(bounds.get('ub', np.inf), x0)
-    keep_feasible = bounds.get('keep_feasible', False)
+def _check_bound(val, x0, numpy=False):
+    n = x0.numel()
+    if isinstance(val, numbers.Number):
+        if numpy:
+            return np.full(n, val, dtype=float)  # TODO: correct dtype
+        else:
+            return x0.new_full((n,), val)
 
-    return Bounds(lb, ub, keep_feasible)
+    if isinstance(val, (list, tuple)):
+        if numpy:
+            val = np.array(val, dtype=float)  # TODO: correct dtype
+        else:
+            val = x0.new_tensor(val)
+
+    if isinstance(val, torch.Tensor):
+        assert val.numel() == n, f'Bound tensor has incorrect size'
+        val = val.flatten()
+        if numpy:
+            val = val.detach().cpu().numpy()
+        return val
+    elif isinstance(val, np.ndarray):
+        assert val.size == n, f'Bound array has incorrect size'
+        val = val.flatten()
+        if not numpy:
+            val = x0.new_tensor(val)
+        return val
+    else:
+        raise ValueError(f'Bound has invalid type: {type(val)}')
 
 
-@torch.no_grad()
+def _check_bounds(bounds, x0, method):
+    if isinstance(bounds, Bounds):
+        if method == 'trust-constr':
+            return bounds
+        else:
+            bounds = (bounds.lb, bounds.ub)
+            bounds = tuple(map(_maybe_to_number, bounds))
+
+    assert isinstance(bounds, (list, tuple)), \
+        f'Argument `bounds` must be a list or tuple but got {type(bounds)}'
+    assert len(bounds) == 2, \
+        f'Argument `bounds` must have length 2: (min, max)'
+    lb, ub = bounds
+
+    lb = float('-inf') if lb is None else lb
+    ub = float('inf') if ub is None else ub
+
+    numpy = (method == 'trust-constr')
+    lb = _check_bound(lb, x0, numpy=numpy)
+    ub = _check_bound(ub, x0, numpy=numpy)
+
+    return lb, ub
+
+
 def minimize_constr(
-        f, x0, constr=None, bounds=None, max_iter=None, tol=None, callback=None,
-        disp=0, **kwargs):
+        f,
+        x0,
+        method=None,
+        constr=None,
+        bounds=None,
+        max_iter=None,
+        tol=None,
+        options=None,
+        callback=None,
+        disp=0,
+        ):
     """Minimize a scalar function of one or more variables subject to
     bounds and/or constraints.
 
     .. note::
-        This is a wrapper for SciPy's
-        `'trust-constr' <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_
-        method. It uses autograd behind the scenes to build jacobian & hessian
-        callables before invoking scipy. Inputs and objectivs should use
-        PyTorch tensors like other routines. CUDA is supported; however,
-        data will be transferred back-and-forth between GPU/CPU.
+        Method ``'trust-constr'`` is currently a wrapper for SciPy's 
+        `trust-constr <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_ 
+        solver.
 
     Parameters
     ----------
@@ -144,22 +104,31 @@ def minimize_constr(
         Scalar objective function to minimize.
     x0 : Tensor
         Initialization point.
-    constr : dict, optional
-        Constraint specifications. Should be a dictionary with the
-        following fields:
+    method : str, optional
+        The minimization routine to use. Should be one of the following:
+
+            - 'l-bfgs-b'
+            - 'frank-wolfe'
+            - 'trust-constr'
+
+        If no method is provided, a default method will be selected based
+        on the criteria of the problem.
+    constr : dict or string, optional
+        Constraint specifications. Should either be a string (Frank-Wolfe
+        method) or a dictionary (trust-constr method) with the following fields:
 
             * fun (callable) - Constraint function
             * lb (Tensor or float, optional) - Constraint lower bounds
-            * ub : (Tensor or float, optional) - Constraint upper bounds
+            * ub (Tensor or float, optional) - Constraint upper bounds
 
         One of either `lb` or `ub` must be provided. When `lb` == `ub` it is
         interpreted as an equality constraint.
-    bounds : dict, optional
-        Bounds on variables. Should a dictionary with at least one
-        of the following fields:
+    bounds : sequence or `Bounds`, optional
+        Bounds on variables. There are two ways to specify the bounds:
 
-            * lb (Tensor or float) - Lower bounds
-            * ub (Tensor or float) - Upper bounds
+            1. Sequence of ``(min, max)`` pairs for each element in `x`. None
+               is used to specify no bound.
+            2. Instance of :class:`scipy.optimize.Bounds` class.
 
         Bounds of `-inf`/`inf` are interpreted as no bound. When `lb` == `ub`
         it is interpreted as an equality constraint.
@@ -169,6 +138,9 @@ def minimize_constr(
     tol : float, optional
         Tolerance for termination. For detailed control, use solver-specific
         options.
+    options : dict, optional
+        A dictionary of keyword arguments to pass to the selected minimization
+        routine.
     callback : callable, optional
         Function to call after each iteration with the current parameter
         state, e.g. ``callback(x)``.
@@ -179,9 +151,6 @@ def minimize_constr(
             * 1 : display a termination report.
             * 2 : display progress during iterations.
             * 3 : display progress during iterations (more complete report).
-    **kwargs
-        Additional keyword arguments passed to SciPy's trust-constr solver.
-        See options `here <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html>`_.
 
     Returns
     -------
@@ -189,46 +158,59 @@ def minimize_constr(
         Result of the optimization routine.
 
     """
-    if max_iter is None:
-        max_iter = 1000
-    x0 = x0.detach()
-    if x0.is_cuda:
-        warnings.warn('GPU is not recommended for trust-constr. '
-                      'Data will be moved back-and-forth from CPU.')
 
-    # handle callbacks
-    if callback is not None:
-        callback_ = callback
-        callback = lambda x, state: callback_(
-            torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0), state)
+    if method is None:
+        if constr is not None:
+            _frank_wolfe_constraints = {
+                'tracenorm', 'trace-norm', 'birkhoff', 'birkhoff-polytope'}
+            if (
+                isinstance(constr, str)
+                and constr.lower() in _frank_wolfe_constraints
+                ):
+                method = 'frank-wolfe'
+            else:
+                method = 'trust-constr'
+        else:
+            method = 'l-bfgs-b'
 
-    # handle bounds
+    assert isinstance(method, str)
+    method = method.lower()
+
     if bounds is not None:
-        bounds = _build_bounds(bounds, x0)
+        bounds = _check_bounds(bounds, x0, method)
 
-    # build objective function (and hessian)
-    f_with_jac, f_hess = _build_obj(f, x0)
+        # TODO: update `_minimize_trust_constr()` accepted bounds format
+        # and remove this
+        if method == 'trust-constr':
+            if isinstance(bounds, Bounds):
+                bounds = dict(
+                    lb=_maybe_to_number(bounds.lb),
+                    ub=_maybe_to_number(bounds.ub),
+                    keep_feasible=bounds.keep_feasible,
+                )
+            else:
+                bounds = dict(lb=bounds[0], ub=bounds[1])
 
-    # build constraints
-    if constr is not None:
-        constraints = [_build_constr(constr, x0)]
+    if options is None:
+        options = {}
     else:
-        constraints = []
+        assert isinstance(options, dict)
+        options = options.copy()
+    options.setdefault('max_iter', max_iter)
+    options.setdefault('callback', callback)
+    options.setdefault('disp', disp)
+    # options.setdefault('return_all', return_all)
+    if tol is not None:
+        options.setdefault(_tolerance_keys[method], tol)
 
-    # optimize
-    x0_np = x0.cpu().numpy().flatten().copy()
-    result = minimize(
-        f_with_jac, x0_np, method='trust-constr', jac=True,
-        hess=f_hess, callback=callback, tol=tol,
-        bounds=bounds,
-        constraints=constraints,
-        options=dict(verbose=int(disp), maxiter=max_iter, **kwargs)
-    )
-
-    # convert the important things to torch tensors
-    for key in ['fun', 'grad', 'x']:
-        result[key] = torch.tensor(result[key], dtype=x0.dtype, device=x0.device)
-    result['x'] = result['x'].view_as(x0)
-
-    return result
-
+    if method == 'l-bfgs-b':
+        assert constr is None
+        return _minimize_lbfgsb(f, x0, bounds=bounds, **options)
+    elif method == 'frank-wolfe':
+        assert bounds is None
+        return _minimize_frankwolfe(f, x0, constr=constr, **options)
+    elif method == 'trust-constr':
+        return _minimize_trust_constr(
+            f, x0, constr=constr, bounds=bounds, **options)
+    else:
+        raise RuntimeError(f'Invalid method: "{method}".')
