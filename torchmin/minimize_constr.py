@@ -1,4 +1,7 @@
+import numbers
+import numpy as np
 import torch
+from scipy.optimize import Bounds
 
 from .constrained.lbfgsb import _minimize_lbfgsb
 from .constrained.frankwolfe import _minimize_frankwolfe
@@ -10,6 +13,69 @@ _tolerance_keys = {
     'frank-wolfe': 'gtol',
     'trust-constr': 'tol',
 }
+
+
+def _maybe_to_number(val):
+    if isinstance(val, np.ndarray) and val.size == 1:
+        return val.item()
+    elif isinstance(val, torch.Tensor) and val.numel() == 1:
+        return val.item()
+    else:
+        return val
+
+
+def _check_bound(val, x0, numpy=False):
+    n = x0.numel()
+    if isinstance(val, numbers.Number):
+        if numpy:
+            return np.full(n, val, dtype=float)  # TODO: correct dtype
+        else:
+            return x0.new_full((n,), val)
+
+    if isinstance(val, (list, tuple)):
+        if numpy:
+            val = np.array(val, dtype=float)  # TODO: correct dtype
+        else:
+            val = x0.new_tensor(val)
+
+    if isinstance(val, torch.Tensor):
+        assert val.numel() == n, f'Bound tensor has incorrect size'
+        val = val.flatten()
+        if numpy:
+            val = val.detach().cpu().numpy()
+        return val
+    elif isinstance(val, np.ndarray):
+        assert val.size == n, f'Bound array has incorrect size'
+        val = val.flatten()
+        if not numpy:
+            val = x0.new_tensor(val)
+        return val
+    else:
+        raise ValueError(f'Bound has invalid type: {type(val)}')
+
+
+def _check_bounds(bounds, x0, method):
+    if isinstance(bounds, Bounds):
+        if method == 'trust-constr':
+            return bounds
+        else:
+            bounds = (bounds.lb, bounds.ub)
+            bounds = tuple(map(_maybe_to_number, bounds))
+
+    assert isinstance(bounds, (list, tuple)), \
+        f'Argument `bounds` must be a list or tuple but got {type(bounds)}'
+    assert len(bounds) == 2, \
+        f'Argument `bounds` must have length 2: (min, max)'
+    lb, ub = bounds
+
+    lb = float('-inf') if lb is None else lb
+    ub = float('inf') if ub is None else ub
+
+    numpy = (method == 'trust-constr')
+    lb = _check_bound(lb, x0, numpy=numpy)
+    ub = _check_bound(ub, x0, numpy=numpy)
+
+    return lb, ub
 
 
 def minimize_constr(
@@ -57,13 +123,12 @@ def minimize_constr(
 
         One of either `lb` or `ub` must be provided. When `lb` == `ub` it is
         interpreted as an equality constraint.
-    bounds : dict, optional
-        **TODO: update bounds convention & argument documentation.**
-        Bounds on variables. Should be a dictionary with at least one
-        of the following fields:
+    bounds : sequence or `Bounds`, optional
+        Bounds on variables. There are two ways to specify the bounds:
 
-            * lb (Tensor or float) - Lower bounds
-            * ub (Tensor or float) - Upper bounds
+            1. Sequence of ``(min, max)`` pairs for each element in `x`. None
+               is used to specify no bound.
+            2. Instance of :class:`scipy.optimize.Bounds` class.
 
         Bounds of `-inf`/`inf` are interpreted as no bound. When `lb` == `ub`
         it is interpreted as an equality constraint.
@@ -110,6 +175,21 @@ def minimize_constr(
 
     assert isinstance(method, str)
     method = method.lower()
+
+    if bounds is not None:
+        bounds = _check_bounds(bounds, x0, method)
+
+        # TODO: update `_minimize_trust_constr()` accepted bounds format
+        # and remove this
+        if method == 'trust-constr':
+            if isinstance(bounds, Bounds):
+                bounds = dict(
+                    lb=_maybe_to_number(bounds.lb),
+                    ub=_maybe_to_number(bounds.ub),
+                    keep_feasible=bounds.keep_feasible,
+                )
+            else:
+                bounds = dict(lb=bounds[0], ub=bounds[1])
 
     if options is None:
         options = {}
