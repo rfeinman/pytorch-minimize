@@ -1,6 +1,55 @@
 [build-system]
-requires = ["setuptools>=46.4.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytorch-minimize"
+dynamic = ["version"]
+description = "Newton and Quasi-Newton optimization with PyTorch"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT License"}
+authors = [
+    {name = "Reuben Feinman", email = "reuben.feinman@nyu.edu"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.18.0",
+    "scipy>=1.6",
+    "torch>=1.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+docs = [
+    "sphinx==3.5.3",
+    "jinja2<3.1",
+    "sphinx_rtd_theme==0.5.2",
+    "readthedocs-sphinx-search==0.3.2",
+]
+
+[project.urls]
+Documentation = "https://pytorch-minimize.readthedocs.io"
+Homepage = "https://github.com/rfeinman/pytorch-minimize"
+
+[tool.setuptools]
+include-package-data = false  # Only include .py files
+
+[tool.setuptools.dynamic]
+version = {attr = "torchmin.__version__"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "docs*", "examples*", "tmp*"]
+
+# For sdist (source distribution) control
+[tool.setuptools.exclude-package-data]
+"*" = ["docs", "examples", "tmp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
