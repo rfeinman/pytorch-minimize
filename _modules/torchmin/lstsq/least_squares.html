@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.lstsq.least_squares &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">torchmin.lstsq.least_squares</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for torchmin.lstsq.least_squares</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Generic interface for nonlinear least-squares minimization.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numbers</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.trf</span><span class="w"> </span><span class="kn">import</span> <span class="n">trf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">EPS</span><span class="p">,</span> <span class="n">in_bounds</span><span class="p">,</span> <span class="n">make_strictly_feasible</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;least_squares&#39;</span><span class="p">]</span>
+
+
+<span class="n">TERMINATION_MESSAGES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="o">-</span><span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;Improper input parameters status returned from `leastsq`&quot;</span><span class="p">,</span>
+    <span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;The maximum number of function evaluations is exceeded.&quot;</span><span class="p">,</span>
+    <span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;`gtol` termination condition is satisfied.&quot;</span><span class="p">,</span>
+    <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;`ftol` termination condition is satisfied.&quot;</span><span class="p">,</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="s2">&quot;`xtol` termination condition is satisfied.&quot;</span><span class="p">,</span>
+    <span class="mi">4</span><span class="p">:</span> <span class="s2">&quot;Both `ftol` and `xtol` termination conditions are satisfied.&quot;</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">prepare_bounds</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">x0</span><span class="p">):</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">x0</span><span class="o">.</span><span class="n">new_full</span><span class="p">((</span><span class="n">n</span><span class="p">,),</span> <span class="n">b</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">x0</span><span class="o">.</span><span class="n">new_full</span><span class="p">((</span><span class="n">n</span><span class="p">,),</span> <span class="n">b</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+    <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span> <span class="o">=</span> <span class="p">[</span><span class="n">process</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bounds</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check_tolerance</span><span class="p">(</span><span class="n">ftol</span><span class="p">,</span> <span class="n">xtol</span><span class="p">,</span> <span class="n">gtol</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="n">tol</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">tol</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tol</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="n">tol</span> <span class="o">&lt;</span> <span class="n">EPS</span><span class="p">:</span>
+            <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Setting `</span><span class="si">{}</span><span class="s2">` below the machine epsilon (</span><span class="si">{:.2e}</span><span class="s2">) effectively &quot;</span>
+                 <span class="s2">&quot;disables the corresponding termination condition.&quot;</span>
+                 <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">EPS</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">tol</span>
+
+    <span class="n">ftol</span> <span class="o">=</span> <span class="n">check</span><span class="p">(</span><span class="n">ftol</span><span class="p">,</span> <span class="s2">&quot;ftol&quot;</span><span class="p">)</span>
+    <span class="n">xtol</span> <span class="o">=</span> <span class="n">check</span><span class="p">(</span><span class="n">xtol</span><span class="p">,</span> <span class="s2">&quot;xtol&quot;</span><span class="p">)</span>
+    <span class="n">gtol</span> <span class="o">=</span> <span class="n">check</span><span class="p">(</span><span class="n">gtol</span><span class="p">,</span> <span class="s2">&quot;gtol&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;lm&quot;</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ftol</span> <span class="o">&lt;</span> <span class="n">EPS</span> <span class="ow">or</span> <span class="n">xtol</span> <span class="o">&lt;</span> <span class="n">EPS</span> <span class="ow">or</span> <span class="n">gtol</span> <span class="o">&lt;</span> <span class="n">EPS</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All tolerances must be higher than machine epsilon &quot;</span>
+                         <span class="s2">&quot;(</span><span class="si">{:.2e}</span><span class="s2">) for method &#39;lm&#39;.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">EPS</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">ftol</span> <span class="o">&lt;</span> <span class="n">EPS</span> <span class="ow">and</span> <span class="n">xtol</span> <span class="o">&lt;</span> <span class="n">EPS</span> <span class="ow">and</span> <span class="n">gtol</span> <span class="o">&lt;</span> <span class="n">EPS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;At least one of the tolerances must be higher than &quot;</span>
+                         <span class="s2">&quot;machine epsilon (</span><span class="si">{:.2e}</span><span class="s2">).&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">EPS</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">ftol</span><span class="p">,</span> <span class="n">xtol</span><span class="p">,</span> <span class="n">gtol</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check_x_scale</span><span class="p">(</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">x0</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x_scale</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x_scale</span> <span class="o">==</span> <span class="s1">&#39;jac&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x_scale</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">x_scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">x_scale</span><span class="p">)</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">x_scale</span><span class="o">.</span><span class="n">isfinite</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">and</span> <span class="n">x_scale</span><span class="o">.</span><span class="n">gt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`x_scale` must be &#39;jac&#39; or array_like with &quot;</span>
+                         <span class="s2">&quot;positive numbers.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">x_scale</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">x_scale</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">new_full</span><span class="p">(</span><span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">x_scale</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">x_scale</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inconsistent shapes between `x_scale` and `x0`.&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x_scale</span>
+
+
+<div class="viewcode-block" id="least_squares"><a class="viewcode-back" href="../../../api/generated/torchmin.least_squares.html#torchmin.least_squares">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">least_squares</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;trf&#39;</span><span class="p">,</span> <span class="n">ftol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span>
+        <span class="n">gtol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">x_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">tr_solver</span><span class="o">=</span><span class="s1">&#39;lsmr&#39;</span><span class="p">,</span> <span class="n">tr_options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_nfev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Solve a nonlinear least-squares problem with bounds on the variables.</span>
+
+<span class="sd">    Given the residual function</span>
+<span class="sd">    :math:`f: \mathcal{R}^n \rightarrow \mathcal{R}^m`, `least_squares`</span>
+<span class="sd">    finds a local minimum of the residual sum-of-squares (RSS) objective:</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        x^* = \underset{x}{\operatorname{arg\,min\,}}</span>
+<span class="sd">        \frac{1}{2} ||f(x)||_2^2 \quad \text{subject to} \quad lb \leq x \leq ub</span>
+
+<span class="sd">    The solution is found using variants of the Gauss-Newton method, a</span>
+<span class="sd">    modification of Newton&#39;s method tailored to RSS problems.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Function which computes the vector of residuals, with the signature</span>
+<span class="sd">        ``fun(x)``. The argument ``x`` passed to this</span>
+<span class="sd">        function is a Tensor of shape (n,) (never a scalar, even for n=1).</span>
+<span class="sd">        It must allocate and return a 1-D Tensor of shape (m,) or a scalar.</span>
+<span class="sd">    x0 : Tensor or float</span>
+<span class="sd">        Initial guess on independent variables, with shape (n,). If</span>
+<span class="sd">        float, it will be treated as a 1-D Tensor with one element.</span>
+<span class="sd">    bounds : 2-tuple of Tensor, optional</span>
+<span class="sd">        Lower and upper bounds on independent variables. Defaults to no bounds.</span>
+<span class="sd">        Each Tensor must match the size of `x0` or be a scalar, in the latter</span>
+<span class="sd">        case a bound will be the same for all variables. Use ``inf`` with</span>
+<span class="sd">        an appropriate sign to disable bounds on all or some variables.</span>
+<span class="sd">    method : str, optional</span>
+<span class="sd">        Algorithm to perform minimization. Default is &#39;trf&#39;.</span>
+
+<span class="sd">            * &#39;trf&#39; : Trust Region Reflective algorithm, particularly suitable</span>
+<span class="sd">              for large sparse problems with bounds. Generally robust method.</span>
+<span class="sd">            * &#39;dogbox&#39; : COMING SOON. dogleg algorithm with rectangular trust regions,</span>
+<span class="sd">              typical use case is small problems with bounds. Not recommended</span>
+<span class="sd">              for problems with rank-deficient Jacobian.</span>
+<span class="sd">    ftol : float or None, optional</span>
+<span class="sd">        Tolerance for termination by the change of the cost function. The</span>
+<span class="sd">        optimization process is stopped when ``dF &lt; ftol * F``,</span>
+<span class="sd">        and there was an adequate agreement between a local quadratic model and</span>
+<span class="sd">        the true model in the last step. If None, the termination by this</span>
+<span class="sd">        condition is disabled. Default is 1e-8.</span>
+<span class="sd">    xtol : float or None, optional</span>
+<span class="sd">        Tolerance for termination by the change of the independent variables.</span>
+<span class="sd">        Termination occurs when ``norm(dx) &lt; xtol * (xtol + norm(x))``.</span>
+<span class="sd">        If None, the termination by this condition is disabled. Default is 1e-8.</span>
+<span class="sd">    gtol : float or None, optional</span>
+<span class="sd">        Tolerance for termination by the norm of the gradient. Default is 1e-8.</span>
+<span class="sd">        The exact condition depends on `method` used:</span>
+
+<span class="sd">            * For &#39;trf&#39; : ``norm(g_scaled, ord=inf) &lt; gtol``, where</span>
+<span class="sd">              ``g_scaled`` is the value of the gradient scaled to account for</span>
+<span class="sd">              the presence of the bounds [STIR]_.</span>
+<span class="sd">            * For &#39;dogbox&#39; : ``norm(g_free, ord=inf) &lt; gtol``, where</span>
+<span class="sd">              ``g_free`` is the gradient with respect to the variables which</span>
+<span class="sd">              are not in the optimal state on the boundary.</span>
+<span class="sd">    x_scale : Tensor or &#39;jac&#39;, optional</span>
+<span class="sd">        Characteristic scale of each variable. Setting `x_scale` is equivalent</span>
+<span class="sd">        to reformulating the problem in scaled variables ``xs = x / x_scale``.</span>
+<span class="sd">        An alternative view is that the size of a trust region along jth</span>
+<span class="sd">        dimension is proportional to ``x_scale[j]``. Improved convergence may</span>
+<span class="sd">        be achieved by setting `x_scale` such that a step of a given size</span>
+<span class="sd">        along any of the scaled variables has a similar effect on the cost</span>
+<span class="sd">        function. If set to &#39;jac&#39;, the scale is iteratively updated using the</span>
+<span class="sd">        inverse norms of the columns of the Jacobian matrix (as described in</span>
+<span class="sd">        [JJMore]_).</span>
+<span class="sd">    max_nfev : None or int, optional</span>
+<span class="sd">        Maximum number of function evaluations before the termination.</span>
+<span class="sd">        Defaults to 100 * n.</span>
+<span class="sd">    tr_solver : str, optional</span>
+<span class="sd">        Method for solving trust-region subproblems.</span>
+
+<span class="sd">            * &#39;exact&#39; is suitable for not very large problems with dense</span>
+<span class="sd">              Jacobian matrices. The computational complexity per iteration is</span>
+<span class="sd">              comparable to a singular value decomposition of the Jacobian</span>
+<span class="sd">              matrix.</span>
+<span class="sd">            * &#39;lsmr&#39; is suitable for problems with sparse and large Jacobian</span>
+<span class="sd">              matrices. It uses an iterative procedure for finding a solution</span>
+<span class="sd">              of a linear least-squares problem and only requires matrix-vector</span>
+<span class="sd">              product evaluations.</span>
+<span class="sd">    tr_options : dict, optional</span>
+<span class="sd">        Keyword options passed to trust-region solver.</span>
+
+<span class="sd">            * ``tr_solver=&#39;exact&#39;``: `tr_options` are ignored.</span>
+<span class="sd">            * ``tr_solver=&#39;lsmr&#39;``: options for `scipy.sparse.linalg.lsmr`.</span>
+<span class="sd">              Additionally,  ``method=&#39;trf&#39;`` supports  &#39;regularize&#39; option</span>
+<span class="sd">              (bool, default is True), which adds a regularization term to the</span>
+<span class="sd">              normal equation, which improves convergence if the Jacobian is</span>
+<span class="sd">              rank-deficient [Byrd]_ (eq. 3.4).</span>
+<span class="sd">    verbose : int, optional</span>
+<span class="sd">        Level of algorithm&#39;s verbosity.</span>
+
+<span class="sd">            * 0 : work silently (default).</span>
+<span class="sd">            * 1 : display a termination report.</span>
+<span class="sd">            * 2 : display progress during iterations.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [STIR] M. A. Branch, T. F. Coleman, and Y. Li, &quot;A Subspace, Interior,</span>
+<span class="sd">              and Conjugate Gradient Method for Large-Scale Bound-Constrained</span>
+<span class="sd">              Minimization Problems,&quot; SIAM Journal on Scientific Computing,</span>
+<span class="sd">              Vol. 21, Number 1, pp 1-23, 1999.</span>
+<span class="sd">    .. [Byrd] R. H. Byrd, R. B. Schnabel and G. A. Shultz, &quot;Approximate</span>
+<span class="sd">              solution of the trust region problem by minimization over</span>
+<span class="sd">              two-dimensional subspaces&quot;, Math. Programming, 40, pp. 247-263,</span>
+<span class="sd">              1988.</span>
+<span class="sd">    .. [JJMore] J. J. More, &quot;The Levenberg-Marquardt Algorithm: Implementation</span>
+<span class="sd">                and Theory,&quot; Numerical Analysis, ed. G. A. Watson, Lecture</span>
+<span class="sd">                Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">tr_options</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tr_options</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;trf&#39;</span><span class="p">,</span> <span class="s1">&#39;dogbox&#39;</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`method` must be &#39;trf&#39; or &#39;dogbox&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">tr_solver</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;exact&#39;</span><span class="p">,</span> <span class="s1">&#39;lsmr&#39;</span><span class="p">,</span> <span class="s1">&#39;cgls&#39;</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`tr_solver` must be one of {&#39;exact&#39;, &#39;lsmr&#39;, &#39;cgls&#39;}.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`verbose` must be in [0, 1, 2].&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`bounds` must be a tuple/list with 2 elements.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">max_nfev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">max_nfev</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`max_nfev` must be None or positive integer.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># initial point</span>
+    <span class="n">x0</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_complex</span><span class="p">(</span><span class="n">x0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`x0` must be real.&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">x0</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`x0` must have at most 1 dimension.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># bounds</span>
+    <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span> <span class="o">=</span> <span class="n">prepare_bounds</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">x0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">lb</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span> <span class="ow">or</span> <span class="n">ub</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inconsistent shapes between bounds and `x0`.&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">torch</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">lb</span> <span class="o">&gt;=</span> <span class="n">ub</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Each lower bound must be strictly less than each &quot;</span>
+                         <span class="s2">&quot;upper bound.&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">in_bounds</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`x0` is infeasible.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># x_scale</span>
+    <span class="n">x_scale</span> <span class="o">=</span> <span class="n">check_x_scale</span><span class="p">(</span><span class="n">x_scale</span><span class="p">,</span> <span class="n">x0</span><span class="p">)</span>
+
+    <span class="c1"># tolerance</span>
+    <span class="n">ftol</span><span class="p">,</span> <span class="n">xtol</span><span class="p">,</span> <span class="n">gtol</span> <span class="o">=</span> <span class="n">check_tolerance</span><span class="p">(</span><span class="n">ftol</span><span class="p">,</span> <span class="n">xtol</span><span class="p">,</span> <span class="n">gtol</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;trf&#39;</span><span class="p">:</span>
+        <span class="n">x0</span> <span class="o">=</span> <span class="n">make_strictly_feasible</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">fun_wrapped</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">fun</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+    <span class="c1"># check function</span>
+    <span class="n">f0</span> <span class="o">=</span> <span class="n">fun_wrapped</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">f0</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`fun` must return at most 1-d array_like. &quot;</span>
+                         <span class="s2">&quot;f0.shape: </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">f0</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">f0</span><span class="o">.</span><span class="n">isfinite</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Residuals are not finite in the initial point.&quot;</span><span class="p">)</span>
+
+    <span class="n">initial_cost</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">f0</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">f0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x_scale</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x_scale</span> <span class="o">==</span> <span class="s1">&#39;jac&#39;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;x_scale=&#39;jac&#39; can&#39;t be used when `jac` &quot;</span>
+                         <span class="s2">&quot;returns LinearOperator.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;trf&#39;</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">trf</span><span class="p">(</span><span class="n">fun_wrapped</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">f0</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">ftol</span><span class="p">,</span> <span class="n">xtol</span><span class="p">,</span> <span class="n">gtol</span><span class="p">,</span>
+                     <span class="n">max_nfev</span><span class="p">,</span> <span class="n">x_scale</span><span class="p">,</span> <span class="n">tr_solver</span><span class="p">,</span> <span class="n">tr_options</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">verbose</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;dogbox&#39;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;&#39;dogbox&#39; method not yet implemented&quot;</span><span class="p">)</span>
+        <span class="c1"># if tr_solver == &#39;lsmr&#39; and &#39;regularize&#39; in tr_options:</span>
+        <span class="c1">#     warn(&quot;The keyword &#39;regularize&#39; in `tr_options` is not relevant &quot;</span>
+        <span class="c1">#          &quot;for &#39;dogbox&#39; method.&quot;)</span>
+        <span class="c1">#     tr_options = tr_options.copy()</span>
+        <span class="c1">#     del tr_options[&#39;regularize&#39;]</span>
+        <span class="c1"># result = dogbox(fun_wrapped, x0, f0, lb, ub, ftol, xtol, gtol,</span>
+        <span class="c1">#                 max_nfev, x_scale, tr_solver, tr_options, verbose)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`method` must be &#39;trf&#39; or &#39;dogbox&#39;.&quot;</span><span class="p">)</span>
+
+    <span class="n">result</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">TERMINATION_MESSAGES</span><span class="p">[</span><span class="n">result</span><span class="o">.</span><span class="n">status</span><span class="p">]</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">success</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Function evaluations </span><span class="si">{0}</span><span class="s2">, initial cost </span><span class="si">{1:.4e}</span><span class="s2">, final cost &quot;</span>
+              <span class="s2">&quot;</span><span class="si">{2:.4e}</span><span class="s2">, first-order optimality </span><span class="si">{3:.2e}</span><span class="s2">.&quot;</span>
+              <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">nfev</span><span class="p">,</span> <span class="n">initial_cost</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">cost</span><span class="p">,</span>
+                      <span class="n">result</span><span class="o">.</span><span class="n">optimality</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

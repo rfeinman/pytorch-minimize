@@ -1,0 +1,34 @@
+﻿torchmin.ScipyMinimizer
+=======================
+
+.. currentmodule:: torchmin
+
+.. autoclass:: ScipyMinimizer
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScipyMinimizer.__init__
+      ~ScipyMinimizer.add_param_group
+      ~ScipyMinimizer.load_state_dict
+      ~ScipyMinimizer.profile_hook_step
+      ~ScipyMinimizer.register_load_state_dict_post_hook
+      ~ScipyMinimizer.register_load_state_dict_pre_hook
+      ~ScipyMinimizer.register_state_dict_post_hook
+      ~ScipyMinimizer.register_state_dict_pre_hook
+      ~ScipyMinimizer.register_step_post_hook
+      ~ScipyMinimizer.register_step_pre_hook
+      ~ScipyMinimizer.state_dict
+      ~ScipyMinimizer.step
+      ~ScipyMinimizer.zero_grad
+   
+   
+
+   
+   
+   

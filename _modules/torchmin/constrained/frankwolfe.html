@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.constrained.frankwolfe &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">torchmin.constrained.frankwolfe</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for torchmin.constrained.frankwolfe</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numbers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Number</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">linear_sum_assignment</span><span class="p">,</span>
+    <span class="n">OptimizeResult</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.sparse.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">svds</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..function</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScalarFunction</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">_status_message</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize._optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">_status_message</span>
+
+
+<div class="viewcode-block" id="_minimize_frankwolfe"><a class="viewcode-back" href="../../../api/minimize-constr-frankwolfe.html#torchmin.constrained.frankwolfe._minimize_frankwolfe">[docs]</a><span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_minimize_frankwolfe</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">constr</span><span class="o">=</span><span class="s1">&#39;tracenorm&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gtol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
+        <span class="n">normp</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimize a scalar function of a matrix with Frank-Wolfe (a.k.a.</span>
+<span class="sd">    conditional gradient).</span>
+
+<span class="sd">    The algorithm is described in [1]_. The following constraints are currently </span>
+<span class="sd">    supported:</span>
+
+<span class="sd">        - Trace norm. The matrix is constrained to have trace norm (a.k.a.</span>
+<span class="sd">          nuclear norm) less than t.</span>
+<span class="sd">        - Birkhoff polytope. The matrix is constrained to lie in the Birkhoff</span>
+<span class="sd">          polytope, i.e. over the space of doubly stochastic matrices. Requires</span>
+<span class="sd">          a square matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Scalar objective function to minimize.</span>
+<span class="sd">    x0 : Tensor</span>
+<span class="sd">        Initialization point.</span>
+<span class="sd">    constr : str</span>
+<span class="sd">        Which constraint to use. Must be either &#39;tracenorm&#39; or &#39;birkhoff&#39;.</span>
+<span class="sd">    t : float, optional</span>
+<span class="sd">        Maximum allowed trace norm. Required when using the &#39;tracenorm&#39; constr;</span>
+<span class="sd">        otherwise unused.</span>
+<span class="sd">    max_iter : int, optional</span>
+<span class="sd">        Maximum number of iterations to perform.</span>
+<span class="sd">    gtol : float</span>
+<span class="sd">        Termination tolerance on 1st-order optimality (gradient norm).</span>
+<span class="sd">    normp : float</span>
+<span class="sd">        The norm type to use for termination conditions. Can be any value</span>
+<span class="sd">        supported by :func:`torch.norm`.</span>
+<span class="sd">    callback : callable, optional</span>
+<span class="sd">        Function to call after each iteration with the current parameter</span>
+<span class="sd">        state, e.g. ``callback(x)``.</span>
+<span class="sd">    disp : int or bool</span>
+<span class="sd">        Display (verbosity) level. Set to &gt;0 to print status messages.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Martin Jaggi, &quot;Revisiting Frank-Wolfe: Projection-Free Sparse Convex</span>
+<span class="sd">       Optimization&quot;, ICML 2013.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">constr</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+    <span class="n">constr</span> <span class="o">=</span> <span class="n">constr</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">constr</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;tracenorm&#39;</span><span class="p">,</span> <span class="s1">&#39;trace-norm&#39;</span><span class="p">}:</span>
+        <span class="k">assert</span> <span class="n">t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> \
+            <span class="sa">f</span><span class="s1">&#39;Argument `t` is required when using the trace-norm constraint.&#39;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">Number</span><span class="p">),</span> \
+            <span class="sa">f</span><span class="s1">&#39;Argument `t` must be a Number but got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="n">constr</span> <span class="o">=</span> <span class="s1">&#39;tracenorm&#39;</span>
+    <span class="k">elif</span> <span class="n">constr</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;birkhoff&#39;</span><span class="p">,</span> <span class="s1">&#39;birkhoff-polytope&#39;</span><span class="p">}:</span>
+        <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s1">&#39;Argument `t` was provided but is unused for the&#39;</span>
+                <span class="s1">&#39;birkhoff-polytope constraint.&#39;</span>
+            <span class="p">)</span>
+        <span class="n">constr</span> <span class="o">=</span> <span class="s1">&#39;birkhoff&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Invalid constr: &quot;</span><span class="si">{</span><span class="n">constr</span><span class="si">}</span><span class="s1">&quot;.&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">x0</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Optimization variable `x` must be a matrix to use Frank-Wolfe.&#39;</span>
+        <span class="p">)</span>
+
+    <span class="n">m</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="k">if</span> <span class="n">constr</span> <span class="o">==</span> <span class="s1">&#39;birkhoff&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Initial iterate must be a square matrix.&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">((</span><span class="n">x0</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">x0</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Initial iterate must be doubly stochastic.&#39;</span><span class="p">)</span>
+
+    <span class="n">disp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">disp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">max_iter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">max_iter</span> <span class="o">=</span> <span class="n">m</span> <span class="o">*</span> <span class="mi">100</span>
+
+    <span class="c1"># Construct scalar objective function</span>
+    <span class="n">sf</span> <span class="o">=</span> <span class="n">ScalarFunction</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x_shape</span><span class="o">=</span><span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">closure</span> <span class="o">=</span> <span class="n">sf</span><span class="o">.</span><span class="n">closure</span>
+    <span class="n">dir_evaluate</span> <span class="o">=</span> <span class="n">sf</span><span class="o">.</span><span class="n">dir_evaluate</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">niter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="n">f</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">closure</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">constr</span> <span class="o">==</span> <span class="s1">&#39;tracenorm&#39;</span><span class="p">:</span>
+            <span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">vh</span> <span class="o">=</span> <span class="n">svds</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">uvh</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">new_tensor</span><span class="p">(</span><span class="n">u</span> <span class="o">@</span> <span class="n">vh</span><span class="p">)</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">/</span> <span class="p">(</span><span class="n">niter</span> <span class="o">+</span> <span class="mf">2.</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">lerp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="n">t</span> <span class="o">*</span> <span class="n">uvh</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">constr</span> <span class="o">==</span> <span class="s1">&#39;birkhoff&#39;</span><span class="p">:</span>
+            <span class="n">row_ind</span><span class="p">,</span> <span class="n">col_ind</span> <span class="o">=</span> <span class="n">linear_sum_assignment</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">/</span> <span class="p">(</span><span class="n">niter</span> <span class="o">+</span> <span class="mf">2.</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">x</span>
+            <span class="n">x</span><span class="p">[</span><span class="n">row_ind</span><span class="p">,</span> <span class="n">col_ind</span><span class="p">]</span> <span class="o">+=</span> <span class="n">alpha</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="k">if</span> <span class="n">disp</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;iter </span><span class="si">%3d</span><span class="s1"> - fval: </span><span class="si">%0.4f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">niter</span><span class="p">,</span> <span class="n">f</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">callback</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">5</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Stopped by the user through the callback function.&#39;</span>
+                <span class="k">break</span>
+
+        <span class="c1"># check optimality</span>
+        <span class="n">grad_norm</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="n">normp</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">grad_norm</span> <span class="o">&lt;=</span> <span class="n">gtol</span><span class="p">:</span>
+            <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">_status_message</span><span class="p">[</span><span class="s1">&#39;success&#39;</span><span class="p">]</span>
+            <span class="k">break</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># if we get to the end, the maximum iterations was reached</span>
+        <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">_status_message</span><span class="p">[</span><span class="s1">&#39;maxiter&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="s2">&quot;Warning: &quot;</span> <span class="k">if</span> <span class="n">warnflag</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;         Current function value: </span><span class="si">%f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">f</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;         Iterations: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">niter</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;         Function evaluations: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">sf</span><span class="o">.</span><span class="n">nfev</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">OptimizeResult</span><span class="p">(</span><span class="n">fun</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">view_as</span><span class="p">(</span><span class="n">x0</span><span class="p">),</span> <span class="n">grad</span><span class="o">=</span><span class="n">g</span><span class="o">.</span><span class="n">view_as</span><span class="p">(</span><span class="n">x0</span><span class="p">),</span>
+                            <span class="n">status</span><span class="o">=</span><span class="n">warnflag</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="p">(</span><span class="n">warnflag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span>
+                            <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span> <span class="n">nit</span><span class="o">=</span><span class="n">niter</span><span class="p">,</span> <span class="n">nfev</span><span class="o">=</span><span class="n">sf</span><span class="o">.</span><span class="n">nfev</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

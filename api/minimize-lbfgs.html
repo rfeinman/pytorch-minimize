@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>minimize(method=’l-bfgs’) &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="minimize(method=’cg’)" href="minimize-cg.html" />
+    <link rel="prev" title="minimize(method=’bfgs’)" href="minimize-bfgs.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#functional-api">Functional API</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.minimize.html">torchmin.minimize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-bfgs.html">minimize(method=’bfgs’)</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">minimize(method=’l-bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-cg.html">minimize(method=’cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-newton-cg.html">minimize(method=’newton-cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-newton-exact.html">minimize(method=’newton-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-dogleg.html">minimize(method=’dogleg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-ncg.html">minimize(method=’trust-ncg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-exact.html">minimize(method=’trust-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-krylov.html">minimize(method=’trust-krylov’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.minimize_constr.html">torchmin.minimize_constr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-lbfgsb.html">minimize_constr(method=’l-bfgs-b’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-frankwolfe.html">minimize_constr(method=’frank-wolfe’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-trust-constr.html">minimize_constr(method=’trust-constr’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.least_squares.html">torchmin.least_squares</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#optimizer-api">Optimizer API</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">API Documentation</a></li>
+      <li class="breadcrumb-item active">minimize(method=’l-bfgs’)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/minimize-lbfgs.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="minimize-method-l-bfgs">
+<h1>minimize(method=’l-bfgs’)<a class="headerlink" href="#minimize-method-l-bfgs" title="Permalink to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="torchmin.bfgs._minimize_lbfgs">
+<span class="sig-prename descclassname"><span class="pre">torchmin.bfgs.</span></span><span class="sig-name descname"><span class="pre">_minimize_lbfgs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fun</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">history_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">line_search</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'strong-wolfe'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gtd_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">inf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_all</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/torchmin/bfgs.html#_minimize_lbfgs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchmin.bfgs._minimize_lbfgs" title="Permalink to this definition"></a></dt>
+<dd><p>Minimize a multivariate function with L-BFGS</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fun</strong> (<em>callable</em>) – Scalar objective function to minimize.</p></li>
+<li><p><strong>x0</strong> (<em>Tensor</em>) – Initialization point.</p></li>
+<li><p><strong>lr</strong> (<em>float</em>) – Step size for parameter updates. If using line search, this will be
+used as the initial step size for the search.</p></li>
+<li><p><strong>history_size</strong> (<em>int</em>) – History size for L-BFGS hessian estimates.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em><em>, </em><em>optional</em>) – Maximum number of iterations to perform. Defaults to
+<code class="docutils literal notranslate"><span class="pre">200</span> <span class="pre">*</span> <span class="pre">x0.numel()</span></code>.</p></li>
+<li><p><strong>line_search</strong> (<em>str</em>) – Line search specifier. Currently the available options are
+{‘none’, ‘strong-wolfe’}.</p></li>
+<li><p><strong>gtol</strong> (<em>float</em>) – Termination tolerance on 1st-order optimality (gradient norm).</p></li>
+<li><p><strong>xtol</strong> (<em>float</em>) – Termination tolerance on function/parameter changes.</p></li>
+<li><p><strong>gtd_tol</strong> (<em>float</em>) – Tolerence used to verify that the search direction is a <em>descent
+direction</em>. The directional derivative <cite>gtd</cite> should be negative for
+descent; this check ensures that <cite>gtd &lt; -xtol</cite> (sufficiently negative).</p></li>
+<li><p><strong>normp</strong> (<em>Number</em><em> or </em><em>str</em>) – The norm type to use for termination conditions. Can be any value
+supported by <code class="xref py py-func docutils literal notranslate"><span class="pre">torch.norm()</span></code>.</p></li>
+<li><p><strong>callback</strong> (<em>callable</em><em>, </em><em>optional</em>) – Function to call after each iteration with the current parameter
+state, e.g. <code class="docutils literal notranslate"><span class="pre">callback(x)</span></code>.</p></li>
+<li><p><strong>disp</strong> (<em>int</em><em> or </em><em>bool</em>) – Display (verbosity) level. Set to &gt;0 to print status messages.</p></li>
+<li><p><strong>return_all</strong> (<em>bool</em><em>, </em><em>optional</em>) – Set to True to return a list of the best solution at each of the
+iterations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>result</strong> – Result of the optimization routine.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OptimizeResult</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="minimize-bfgs.html" class="btn btn-neutral float-left" title="minimize(method=’bfgs’)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="minimize-cg.html" class="btn btn-neutral float-right" title="minimize(method=’cg’)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

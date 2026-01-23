@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.trustregion.exact &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">torchmin.trustregion.exact</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for torchmin.trustregion.exact</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Nearly exact trust-region optimization subproblem.</span>
+
+<span class="sd">Code ported from SciPy to PyTorch</span>
+
+<span class="sd">Copyright (c) 2001-2002 Enthought, Inc.  2003-2019, SciPy Developers.</span>
+<span class="sd">All rights reserved.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_lapack_funcs</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">_minimize_trust_region</span><span class="p">,</span> <span class="n">BaseQuadraticSubproblem</span>
+
+
+<div class="viewcode-block" id="_minimize_trust_exact"><a class="viewcode-back" href="../../../api/minimize-trust-exact.html#torchmin.trustregion._minimize_trust_exact">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">_minimize_trust_exact</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">trust_region_options</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimization of scalar function of one or more variables using</span>
+<span class="sd">    a nearly exact trust-region algorithm.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Scalar objective function to minimize.</span>
+<span class="sd">    x0 : Tensor</span>
+<span class="sd">        Initialization point.</span>
+<span class="sd">    initial_tr_radius : float</span>
+<span class="sd">        Initial trust-region radius.</span>
+<span class="sd">    max_tr_radius : float</span>
+<span class="sd">        Maximum value of the trust-region radius. No steps that are longer</span>
+<span class="sd">        than this value will be proposed.</span>
+<span class="sd">    eta : float</span>
+<span class="sd">        Trust region related acceptance stringency for proposed steps.</span>
+<span class="sd">    gtol : float</span>
+<span class="sd">        Gradient norm must be less than ``gtol`` before successful</span>
+<span class="sd">        termination.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    This trust-region solver was based on [1]_, [2]_ and [3]_,</span>
+<span class="sd">    which implement similar algorithms. The algorithm is basically</span>
+<span class="sd">    that of [1]_ but ideas from [2]_ and [3]_ were also used.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] A.R. Conn, N.I. Gould, and P.L. Toint, &quot;Trust region methods&quot;,</span>
+<span class="sd">           Siam, pp. 169-200, 2000.</span>
+<span class="sd">    .. [2] J. Nocedal and  S. Wright, &quot;Numerical optimization&quot;,</span>
+<span class="sd">           Springer Science &amp; Business Media. pp. 83-91, 2006.</span>
+<span class="sd">    .. [3] J.J. More and D.C. Sorensen, &quot;Computing a trust region step&quot;,</span>
+<span class="sd">           SIAM Journal on Scientific and Statistical Computing, vol. 4(3),</span>
+<span class="sd">           pp. 553-572, 1983.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_minimize_trust_region</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span>
+                                  <span class="n">subproblem</span><span class="o">=</span><span class="n">IterativeSubproblem</span><span class="p">,</span>
+                                  <span class="o">**</span><span class="n">trust_region_options</span><span class="p">)</span></div>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">solve_triangular</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transpose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">extra_dim</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">transpose</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve_triangular</span><span class="p">(</span>
+        <span class="n">A</span><span class="p">,</span>
+        <span class="n">b</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="n">extra_dim</span><span class="p">),</span>
+        <span class="n">upper</span><span class="o">=</span><span class="n">upper</span><span class="p">,</span>
+        <span class="n">left</span><span class="o">=</span><span class="ow">not</span> <span class="n">transpose</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">extra_dim</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">solve_cholesky</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cholesky_solve</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">A</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="nd">@torch</span><span class="o">.</span><span class="n">jit</span><span class="o">.</span><span class="n">script</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_smallest_singular_value</span><span class="p">(</span><span class="n">U</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Given upper triangular matrix ``U`` estimate the smallest singular</span>
+<span class="sd">    value and the correspondent right singular vector in O(n**2) operations.</span>
+
+<span class="sd">    A vector `e` with components selected from {+1, -1}</span>
+<span class="sd">    is selected so that the solution `w` to the system</span>
+<span class="sd">    `U.T w = e` is as large as possible. Implementation</span>
+<span class="sd">    based on algorithm 3.5.1, p. 142, from reference [1]_</span>
+<span class="sd">    adapted for lower triangular matrix.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] G.H. Golub, C.F. Van Loan. &quot;Matrix computations&quot;.</span>
+<span class="sd">           Forth Edition. JHU press. pp. 140-142.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">U</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+    <span class="n">UT</span> <span class="o">=</span> <span class="n">U</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">m</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">U</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">if</span> <span class="n">m</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A square triangular matrix should be provided.&quot;</span><span class="p">)</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">U</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">U</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">U</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">U</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">wp</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">/</span> <span class="n">UT</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="n">wm</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">/</span> <span class="n">UT</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="n">pp</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">UT</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">:,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">wp</span>
+        <span class="n">pm</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">UT</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">:,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">wm</span>
+
+        <span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">+</span> <span class="n">norm</span><span class="p">(</span><span class="n">pp</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">wm</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">+</span> <span class="n">norm</span><span class="p">(</span><span class="n">pm</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">w</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span>
+            <span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">pp</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">w</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">wm</span>
+            <span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">pm</span>
+
+    <span class="c1"># The system `U v = w` is solved using backward substitution.</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">U</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">v_norm</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+    <span class="n">s_min</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">/</span> <span class="n">v_norm</span>  <span class="c1"># Smallest singular value</span>
+    <span class="n">z_min</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="n">v_norm</span>        <span class="c1"># Associated vector</span>
+
+    <span class="k">return</span> <span class="n">s_min</span><span class="p">,</span> <span class="n">z_min</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">gershgorin_bounds</span><span class="p">(</span><span class="n">H</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a square matrix ``H`` compute upper</span>
+<span class="sd">    and lower bounds for its eigenvalues (Gregoshgorin Bounds).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">H_diag</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+    <span class="n">H_diag_abs</span> <span class="o">=</span> <span class="n">H_diag</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+    <span class="n">H_row_sums</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">H_diag</span> <span class="o">+</span> <span class="n">H_diag_abs</span> <span class="o">-</span> <span class="n">H_row_sums</span><span class="p">)</span>
+    <span class="n">ub</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">H_diag</span> <span class="o">-</span> <span class="n">H_diag_abs</span> <span class="o">+</span> <span class="n">H_row_sums</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">singular_leading_submatrix</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute term that makes the leading ``k`` by ``k``</span>
+<span class="sd">    submatrix from ``A`` singular.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">U</span><span class="p">[:</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Compute delta</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">-</span> <span class="n">A</span><span class="p">[</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Initialize v</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">new_zeros</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">v</span><span class="p">[</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="c1"># Compute the remaining values of v by solving a triangular system.</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">v</span><span class="p">[:</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">solve_triangular</span><span class="p">(</span><span class="n">U</span><span class="p">[:</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:</span><span class="n">k</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="o">-</span><span class="n">u</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">delta</span><span class="p">,</span> <span class="n">v</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">IterativeSubproblem</span><span class="p">(</span><span class="n">BaseQuadraticSubproblem</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quadratic subproblem solved by nearly exact iterative method.&quot;&quot;&quot;</span>
+
+    <span class="c1"># UPDATE_COEFF appears in reference [1]_</span>
+    <span class="c1"># in formula 7.3.14 (p. 190) named as &quot;theta&quot;.</span>
+    <span class="c1"># As recommended there it value is fixed in 0.01.</span>
+    <span class="n">UPDATE_COEFF</span> <span class="o">=</span> <span class="mf">0.01</span>
+    <span class="n">hess_prod</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fun</span><span class="p">,</span> <span class="n">k_easy</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">k_hard</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fun</span><span class="p">)</span>
+
+        <span class="c1"># When the trust-region shrinks in two consecutive</span>
+        <span class="c1"># calculations (``tr_radius &lt; previous_tr_radius``)</span>
+        <span class="c1"># the lower bound ``lambda_lb`` may be reused,</span>
+        <span class="c1"># facilitating  the convergence. To indicate no</span>
+        <span class="c1"># previous value is known at first ``previous_tr_radius``</span>
+        <span class="c1"># is set to -1  and ``lambda_lb`` to None.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">previous_tr_radius</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_lb</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">niter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">EPS</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span>
+
+        <span class="c1"># ``k_easy`` and ``k_hard`` are parameters used</span>
+        <span class="c1"># to determine the stop criteria to the iterative</span>
+        <span class="c1"># subproblem solver. Take a look at pp. 194-197</span>
+        <span class="c1"># from reference _[1] for a more detailed description.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_easy</span> <span class="o">=</span> <span class="n">k_easy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_hard</span> <span class="o">=</span> <span class="n">k_hard</span>
+
+        <span class="c1"># Get Lapack function for cholesky decomposition.</span>
+        <span class="c1"># NOTE: cholesky_ex requires pytorch &gt;= 1.9.0</span>
+        <span class="k">if</span> <span class="s1">&#39;cholesky_ex&#39;</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">torch_cholesky</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if we don&#39;t have torch cholesky, use potrf from scipy</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cholesky</span><span class="p">,</span> <span class="o">=</span> <span class="n">get_lapack_funcs</span><span class="p">((</span><span class="s1">&#39;potrf&#39;</span><span class="p">,),</span>
+                                              <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">torch_cholesky</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Get info about Hessian</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hess_gershgorin_lb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hess_gershgorin_ub</span> <span class="o">=</span> <span class="n">gershgorin_bounds</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hess_inf</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hess_fro</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="p">,</span> <span class="s1">&#39;fro&#39;</span><span class="p">)</span>
+
+        <span class="c1"># A constant such that for vectors smaler than that</span>
+        <span class="c1"># backward substituition is not reliable. It was stabilished</span>
+        <span class="c1"># based on Golub, G. H., Van Loan, C. F. (2013).</span>
+        <span class="c1"># &quot;Matrix computations&quot;. Forth Edition. JHU press., p.165.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">CLOSE_TO_ZERO</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">EPS</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">hess_inf</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initial_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tr_radius</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Given a trust radius, return a good initial guess for</span>
+<span class="sd">        the damping factor, the lower bound and the upper bound.</span>
+<span class="sd">        The values were chosen accordingly to the guidelines on</span>
+<span class="sd">        section 7.3.8 (p. 192) from [1]_.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hess_norm</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess_fro</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hess_inf</span><span class="p">)</span>
+
+        <span class="c1"># Upper bound for the damping factor</span>
+        <span class="n">lambda_ub</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jac_mag</span> <span class="o">/</span> <span class="n">tr_radius</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">hess_gershgorin_lb</span><span class="p">,</span> <span class="n">hess_norm</span><span class="p">)</span>
+        <span class="n">lambda_ub</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">lambda_ub</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Lower bound for the damping factor</span>
+        <span class="n">lambda_lb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jac_mag</span> <span class="o">/</span> <span class="n">tr_radius</span> <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess_gershgorin_ub</span><span class="p">,</span> <span class="n">hess_norm</span><span class="p">)</span>
+        <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lambda_lb</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="o">.</span><span class="n">diagonal</span><span class="p">()</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">lambda_lb</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Improve bounds with previous info</span>
+        <span class="k">if</span> <span class="n">tr_radius</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">previous_tr_radius</span><span class="p">:</span>
+            <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lambda_lb</span><span class="p">,</span> <span class="n">lambda_lb</span><span class="p">)</span>
+
+        <span class="c1"># Initial guess for the damping factor</span>
+        <span class="k">if</span> <span class="n">lambda_lb</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">lambda_initial</span> <span class="o">=</span> <span class="n">lambda_lb</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lambda_initial</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lambda_lb</span> <span class="o">*</span> <span class="n">lambda_ub</span><span class="p">),</span>
+                <span class="n">lambda_lb</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">UPDATE_COEFF</span><span class="o">*</span><span class="p">(</span><span class="n">lambda_ub</span><span class="o">-</span><span class="n">lambda_lb</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">lambda_initial</span><span class="p">,</span> <span class="n">lambda_lb</span><span class="p">,</span> <span class="n">lambda_ub</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tr_radius</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve quadratic subproblem&quot;&quot;&quot;</span>
+
+        <span class="n">lambda_current</span><span class="p">,</span> <span class="n">lambda_lb</span><span class="p">,</span> <span class="n">lambda_ub</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_values</span><span class="p">(</span><span class="n">tr_radius</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span>
+        <span class="n">hits_boundary</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">already_factorized</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">niter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Compute Cholesky factorization</span>
+            <span class="k">if</span> <span class="n">already_factorized</span><span class="p">:</span>
+                <span class="n">already_factorized</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                <span class="n">H</span><span class="o">.</span><span class="n">diagonal</span><span class="p">()</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">lambda_current</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">torch_cholesky</span><span class="p">:</span>
+                    <span class="n">U</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky_ex</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+                    <span class="n">U</span> <span class="o">=</span> <span class="n">U</span><span class="o">.</span><span class="n">t</span><span class="p">()</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">U</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">H</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                                            <span class="n">lower</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                            <span class="n">overwrite_a</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                            <span class="n">clean</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">U</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">new_tensor</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">niter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Check if factorization succeeded</span>
+            <span class="k">if</span> <span class="n">info</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">jac_mag</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">CLOSE_TO_ZERO</span><span class="p">:</span>
+                <span class="c1"># Successful factorization</span>
+
+                <span class="c1"># Solve `U.T U p = s`</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">solve_cholesky</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">jac</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">p_norm</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+
+                <span class="c1"># Check for interior convergence</span>
+                <span class="k">if</span> <span class="n">p_norm</span> <span class="o">&lt;=</span> <span class="n">tr_radius</span> <span class="ow">and</span> <span class="n">lambda_current</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">hits_boundary</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># Solve `U.T w = p`</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">solve_triangular</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">transpose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">w_norm</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+
+                <span class="c1"># Compute Newton step accordingly to</span>
+                <span class="c1"># formula (4.44) p.87 from ref [2]_.</span>
+                <span class="n">delta_lambda</span> <span class="o">=</span> <span class="p">(</span><span class="n">p_norm</span><span class="o">/</span><span class="n">w_norm</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_norm</span><span class="o">-</span><span class="n">tr_radius</span><span class="p">)</span><span class="o">/</span><span class="n">tr_radius</span>
+                <span class="n">lambda_new</span> <span class="o">=</span> <span class="n">lambda_current</span> <span class="o">+</span> <span class="n">delta_lambda</span>
+
+                <span class="k">if</span> <span class="n">p_norm</span> <span class="o">&lt;</span> <span class="n">tr_radius</span><span class="p">:</span>  <span class="c1"># Inside boundary</span>
+                    <span class="n">s_min</span><span class="p">,</span> <span class="n">z_min</span> <span class="o">=</span> <span class="n">estimate_smallest_singular_value</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+
+                    <span class="n">ta</span><span class="p">,</span> <span class="n">tb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_boundaries_intersections</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">z_min</span><span class="p">,</span> <span class="n">tr_radius</span><span class="p">)</span>
+
+                    <span class="c1"># Choose `step_len` with the smallest magnitude.</span>
+                    <span class="c1"># The reason for this choice is explained at</span>
+                    <span class="c1"># ref [3]_, p. 6 (Immediately before the formula</span>
+                    <span class="c1"># for `tau`).</span>
+                    <span class="n">step_len</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">ta</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">)</span>
+
+                    <span class="c1"># Compute the quadratic term  (p.T*H*p)</span>
+                    <span class="n">quadratic_term</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">H</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+
+                    <span class="c1"># Check stop criteria</span>
+                    <span class="n">relative_error</span> <span class="o">=</span> <span class="p">((</span><span class="n">step_len</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">s_min</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span>
+                                      <span class="p">(</span><span class="n">quadratic_term</span> <span class="o">+</span> <span class="n">lambda_current</span><span class="o">*</span><span class="n">tr_radius</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">relative_error</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_hard</span><span class="p">:</span>
+                        <span class="n">p</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">step_len</span> <span class="o">*</span> <span class="n">z_min</span><span class="p">)</span>
+                        <span class="k">break</span>
+
+                    <span class="c1"># Update uncertanty bounds</span>
+                    <span class="n">lambda_ub</span> <span class="o">=</span> <span class="n">lambda_current</span>
+                    <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lambda_lb</span><span class="p">,</span> <span class="n">lambda_current</span> <span class="o">-</span> <span class="n">s_min</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+                    <span class="c1"># Compute Cholesky factorization</span>
+                    <span class="n">H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                    <span class="n">H</span><span class="o">.</span><span class="n">diagonal</span><span class="p">()</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">lambda_new</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">torch_cholesky</span><span class="p">:</span>
+                        <span class="n">_</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky_ex</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">_</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">H</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                                                <span class="n">lower</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                                <span class="n">overwrite_a</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                                <span class="n">clean</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">info</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">lambda_current</span> <span class="o">=</span> <span class="n">lambda_new</span>
+                        <span class="n">already_factorized</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lambda_lb</span><span class="p">,</span> <span class="n">lambda_new</span><span class="p">)</span>
+                        <span class="n">lambda_current</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                            <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lambda_lb</span> <span class="o">*</span> <span class="n">lambda_ub</span><span class="p">),</span>
+                            <span class="n">lambda_lb</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">UPDATE_COEFF</span><span class="o">*</span><span class="p">(</span><span class="n">lambda_ub</span><span class="o">-</span><span class="n">lambda_lb</span><span class="p">))</span>
+
+                <span class="k">else</span><span class="p">:</span>  <span class="c1"># Outside boundary</span>
+                    <span class="c1"># Check stop criteria</span>
+                    <span class="n">relative_error</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">p_norm</span> <span class="o">-</span> <span class="n">tr_radius</span><span class="p">)</span> <span class="o">/</span> <span class="n">tr_radius</span>
+                    <span class="k">if</span> <span class="n">relative_error</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_easy</span><span class="p">:</span>
+                        <span class="k">break</span>
+
+                    <span class="c1"># Update uncertanty bounds</span>
+                    <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">lambda_current</span>
+
+                    <span class="c1"># Update damping factor</span>
+                    <span class="n">lambda_current</span> <span class="o">=</span> <span class="n">lambda_new</span>
+
+            <span class="k">elif</span> <span class="n">info</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">jac_mag</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">CLOSE_TO_ZERO</span><span class="p">:</span>
+                <span class="c1"># jac_mag very close to zero</span>
+
+                <span class="c1"># Check for interior convergence</span>
+                <span class="k">if</span> <span class="n">lambda_current</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jac</span><span class="o">.</span><span class="n">new_zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                    <span class="n">hits_boundary</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">break</span>
+
+                <span class="n">s_min</span><span class="p">,</span> <span class="n">z_min</span> <span class="o">=</span> <span class="n">estimate_smallest_singular_value</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+                <span class="n">step_len</span> <span class="o">=</span> <span class="n">tr_radius</span>
+
+                <span class="c1"># Check stop criteria</span>
+                <span class="k">if</span> <span class="n">step_len</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">s_min</span><span class="o">**</span><span class="mi">2</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_hard</span> <span class="o">*</span> <span class="n">lambda_current</span> <span class="o">*</span> <span class="n">tr_radius</span><span class="o">**</span><span class="mi">2</span><span class="p">:</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="n">step_len</span> <span class="o">*</span> <span class="n">z_min</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># Update uncertainty bounds and dampening factor</span>
+                <span class="n">lambda_ub</span> <span class="o">=</span> <span class="n">lambda_current</span>
+                <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lambda_lb</span><span class="p">,</span> <span class="n">lambda_current</span> <span class="o">-</span> <span class="n">s_min</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">lambda_current</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lambda_lb</span> <span class="o">*</span> <span class="n">lambda_ub</span><span class="p">),</span>
+                    <span class="n">lambda_lb</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">UPDATE_COEFF</span><span class="o">*</span><span class="p">(</span><span class="n">lambda_ub</span><span class="o">-</span><span class="n">lambda_lb</span><span class="p">))</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Unsuccessful factorization</span>
+
+                <span class="n">delta</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">singular_leading_submatrix</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span>
+                <span class="n">v_norm</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+                <span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">lambda_lb</span><span class="p">,</span> <span class="n">lambda_current</span> <span class="o">+</span> <span class="n">delta</span><span class="o">/</span><span class="n">v_norm</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+                <span class="c1"># Update damping factor</span>
+                <span class="n">lambda_current</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lambda_lb</span> <span class="o">*</span> <span class="n">lambda_ub</span><span class="p">),</span>
+                    <span class="n">lambda_lb</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">UPDATE_COEFF</span><span class="o">*</span><span class="p">(</span><span class="n">lambda_ub</span><span class="o">-</span><span class="n">lambda_lb</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_lb</span> <span class="o">=</span> <span class="n">lambda_lb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_current</span> <span class="o">=</span> <span class="n">lambda_current</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">previous_tr_radius</span> <span class="o">=</span> <span class="n">tr_radius</span>
+
+        <span class="k">return</span> <span class="n">p</span><span class="p">,</span> <span class="n">hits_boundary</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

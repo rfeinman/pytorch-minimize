@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.minimize &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">torchmin.minimize</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for torchmin.minimize</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.bfgs</span><span class="w"> </span><span class="kn">import</span> <span class="n">_minimize_bfgs</span><span class="p">,</span> <span class="n">_minimize_lbfgs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.cg</span><span class="w"> </span><span class="kn">import</span> <span class="n">_minimize_cg</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.newton</span><span class="w"> </span><span class="kn">import</span> <span class="n">_minimize_newton_cg</span><span class="p">,</span> <span class="n">_minimize_newton_exact</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.trustregion</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">_minimize_trust_exact</span><span class="p">,</span> <span class="n">_minimize_dogleg</span><span class="p">,</span>
+                          <span class="n">_minimize_trust_ncg</span><span class="p">,</span> <span class="n">_minimize_trust_krylov</span><span class="p">)</span>
+
+<span class="n">_tolerance_keys</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;l-bfgs&#39;</span><span class="p">:</span> <span class="s1">&#39;gtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;bfgs&#39;</span><span class="p">:</span> <span class="s1">&#39;gtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cg&#39;</span><span class="p">:</span> <span class="s1">&#39;gtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;newton-cg&#39;</span><span class="p">:</span> <span class="s1">&#39;xtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;newton-exact&#39;</span><span class="p">:</span> <span class="s1">&#39;xtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;dogleg&#39;</span><span class="p">:</span> <span class="s1">&#39;gtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;trust-ncg&#39;</span><span class="p">:</span> <span class="s1">&#39;gtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;trust-exact&#39;</span><span class="p">:</span> <span class="s1">&#39;gtol&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;trust-krylov&#39;</span><span class="p">:</span> <span class="s1">&#39;gtol&#39;</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="minimize"><a class="viewcode-back" href="../../api/generated/torchmin.minimize.html#torchmin.minimize">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">minimize</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">disp</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimize a scalar function of one or more variables.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        This is a general-purpose minimizer that calls one of the available</span>
+<span class="sd">        routines based on a supplied `method` argument.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Scalar objective function to minimize.</span>
+<span class="sd">    x0 : Tensor</span>
+<span class="sd">        Initialization point.</span>
+<span class="sd">    method : str</span>
+<span class="sd">        The minimization routine to use. Should be one of</span>
+
+<span class="sd">            - &#39;bfgs&#39;</span>
+<span class="sd">            - &#39;l-bfgs&#39;</span>
+<span class="sd">            - &#39;cg&#39;</span>
+<span class="sd">            - &#39;newton-cg&#39;</span>
+<span class="sd">            - &#39;newton-exact&#39;</span>
+<span class="sd">            - &#39;dogleg&#39;</span>
+<span class="sd">            - &#39;trust-ncg&#39;</span>
+<span class="sd">            - &#39;trust-exact&#39;</span>
+<span class="sd">            - &#39;trust-krylov&#39;</span>
+
+<span class="sd">        At the moment, method must be specified; there is no default.</span>
+<span class="sd">    max_iter : int, optional</span>
+<span class="sd">        Maximum number of iterations to perform. If unspecified, this will</span>
+<span class="sd">        be set to the default of the selected method.</span>
+<span class="sd">    tol : float</span>
+<span class="sd">        Tolerance for termination. For detailed control, use solver-specific</span>
+<span class="sd">        options.</span>
+<span class="sd">    options : dict, optional</span>
+<span class="sd">        A dictionary of keyword arguments to pass to the selected minimization</span>
+<span class="sd">        routine.</span>
+<span class="sd">    callback : callable, optional</span>
+<span class="sd">        Function to call after each iteration with the current parameter</span>
+<span class="sd">        state, e.g. ``callback(x)``.</span>
+<span class="sd">    disp : int or bool</span>
+<span class="sd">        Display (verbosity) level. Set to &gt;0 to print status messages.</span>
+<span class="sd">    return_all : bool, optional</span>
+<span class="sd">        Set to True to return a list of the best solution at each of the</span>
+<span class="sd">        iterations.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x0</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="n">method</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;bfgs&#39;</span><span class="p">,</span> <span class="s1">&#39;l-bfgs&#39;</span><span class="p">,</span> <span class="s1">&#39;cg&#39;</span><span class="p">,</span> <span class="s1">&#39;newton-cg&#39;</span><span class="p">,</span> <span class="s1">&#39;newton-exact&#39;</span><span class="p">,</span>
+                      <span class="s1">&#39;dogleg&#39;</span><span class="p">,</span> <span class="s1">&#39;trust-ncg&#39;</span><span class="p">,</span> <span class="s1">&#39;trust-exact&#39;</span><span class="p">,</span> <span class="s1">&#39;trust-krylov&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">options</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">tol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">_tolerance_keys</span><span class="p">[</span><span class="n">method</span><span class="p">],</span> <span class="n">tol</span><span class="p">)</span>
+    <span class="n">options</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;max_iter&#39;</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">)</span>
+    <span class="n">options</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;callback&#39;</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+    <span class="n">options</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;disp&#39;</span><span class="p">,</span> <span class="n">disp</span><span class="p">)</span>
+    <span class="n">options</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;return_all&#39;</span><span class="p">,</span> <span class="n">return_all</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;bfgs&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_bfgs</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;l-bfgs&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_lbfgs</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;cg&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_cg</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;newton-cg&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_newton_cg</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;newton-exact&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_newton_exact</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;dogleg&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_dogleg</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;trust-ncg&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_trust_ncg</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;trust-exact&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_trust_exact</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;trust-krylov&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_minimize_trust_krylov</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;invalid method &quot;</span><span class="si">{}</span><span class="s1">&quot; encountered.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">method</span><span class="p">))</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

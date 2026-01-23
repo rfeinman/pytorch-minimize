@@ -1,0 +1,6 @@
+﻿torchmin.minimize
+=================
+
+.. currentmodule:: torchmin
+
+.. autofunction:: minimize

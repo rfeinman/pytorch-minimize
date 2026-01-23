@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.least_squares &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="torchmin.Minimizer" href="torchmin.Minimizer.html" />
+    <link rel="prev" title="minimize_constr(method=’trust-constr’)" href="../minimize-constr-trust-constr.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#functional-api">Functional API</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="torchmin.minimize.html">torchmin.minimize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-bfgs.html">minimize(method=’bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-lbfgs.html">minimize(method=’l-bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-cg.html">minimize(method=’cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-newton-cg.html">minimize(method=’newton-cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-newton-exact.html">minimize(method=’newton-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-dogleg.html">minimize(method=’dogleg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-trust-ncg.html">minimize(method=’trust-ncg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-trust-exact.html">minimize(method=’trust-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-trust-krylov.html">minimize(method=’trust-krylov’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchmin.minimize_constr.html">torchmin.minimize_constr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-constr-lbfgsb.html">minimize_constr(method=’l-bfgs-b’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-constr-frankwolfe.html">minimize_constr(method=’frank-wolfe’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-constr-trust-constr.html">minimize_constr(method=’trust-constr’)</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">torchmin.least_squares</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#optimizer-api">Optimizer API</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Documentation</a></li>
+      <li class="breadcrumb-item active">torchmin.least_squares</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/torchmin.least_squares.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="torchmin-least-squares">
+<h1>torchmin.least_squares<a class="headerlink" href="#torchmin-least-squares" title="Permalink to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="torchmin.least_squares">
+<span class="sig-prename descclassname"><span class="pre">torchmin.</span></span><span class="sig-name descname"><span class="pre">least_squares</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fun</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'trf'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ftol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_solver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lsmr'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_nfev</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/torchmin/lstsq/least_squares.html#least_squares"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchmin.least_squares" title="Permalink to this definition"></a></dt>
+<dd><p>Solve a nonlinear least-squares problem with bounds on the variables.</p>
+<p>Given the residual function
+<span class="math notranslate nohighlight">\(f: \mathcal{R}^n \rightarrow \mathcal{R}^m\)</span>, <cite>least_squares</cite>
+finds a local minimum of the residual sum-of-squares (RSS) objective:</p>
+<div class="math notranslate nohighlight">
+\[x^* = \underset{x}{\operatorname{arg\,min\,}}
+\frac{1}{2} ||f(x)||_2^2 \quad \text{subject to} \quad lb \leq x \leq ub\]</div>
+<p>The solution is found using variants of the Gauss-Newton method, a
+modification of Newton’s method tailored to RSS problems.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fun</strong> (<em>callable</em>) – Function which computes the vector of residuals, with the signature
+<code class="docutils literal notranslate"><span class="pre">fun(x)</span></code>. The argument <code class="docutils literal notranslate"><span class="pre">x</span></code> passed to this
+function is a Tensor of shape (n,) (never a scalar, even for n=1).
+It must allocate and return a 1-D Tensor of shape (m,) or a scalar.</p></li>
+<li><p><strong>x0</strong> (<em>Tensor</em><em> or </em><em>float</em>) – Initial guess on independent variables, with shape (n,). If
+float, it will be treated as a 1-D Tensor with one element.</p></li>
+<li><p><strong>bounds</strong> (<em>2-tuple of Tensor</em><em>, </em><em>optional</em>) – Lower and upper bounds on independent variables. Defaults to no bounds.
+Each Tensor must match the size of <cite>x0</cite> or be a scalar, in the latter
+case a bound will be the same for all variables. Use <code class="docutils literal notranslate"><span class="pre">inf</span></code> with
+an appropriate sign to disable bounds on all or some variables.</p></li>
+<li><p><strong>method</strong> (<em>str</em><em>, </em><em>optional</em>) – <p>Algorithm to perform minimization. Default is ‘trf’.</p>
+<blockquote>
+<div><ul>
+<li><p>’trf’ : Trust Region Reflective algorithm, particularly suitable
+for large sparse problems with bounds. Generally robust method.</p></li>
+<li><p>’dogbox’ : COMING SOON. dogleg algorithm with rectangular trust regions,
+typical use case is small problems with bounds. Not recommended
+for problems with rank-deficient Jacobian.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>ftol</strong> (<em>float</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – Tolerance for termination by the change of the cost function. The
+optimization process is stopped when <code class="docutils literal notranslate"><span class="pre">dF</span> <span class="pre">&lt;</span> <span class="pre">ftol</span> <span class="pre">*</span> <span class="pre">F</span></code>,
+and there was an adequate agreement between a local quadratic model and
+the true model in the last step. If None, the termination by this
+condition is disabled. Default is 1e-8.</p></li>
+<li><p><strong>xtol</strong> (<em>float</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – Tolerance for termination by the change of the independent variables.
+Termination occurs when <code class="docutils literal notranslate"><span class="pre">norm(dx)</span> <span class="pre">&lt;</span> <span class="pre">xtol</span> <span class="pre">*</span> <span class="pre">(xtol</span> <span class="pre">+</span> <span class="pre">norm(x))</span></code>.
+If None, the termination by this condition is disabled. Default is 1e-8.</p></li>
+<li><p><strong>gtol</strong> (<em>float</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – <p>Tolerance for termination by the norm of the gradient. Default is 1e-8.
+The exact condition depends on <cite>method</cite> used:</p>
+<blockquote>
+<div><ul>
+<li><p>For ‘trf’ : <code class="docutils literal notranslate"><span class="pre">norm(g_scaled,</span> <span class="pre">ord=inf)</span> <span class="pre">&lt;</span> <span class="pre">gtol</span></code>, where
+<code class="docutils literal notranslate"><span class="pre">g_scaled</span></code> is the value of the gradient scaled to account for
+the presence of the bounds <a class="reference internal" href="#stir" id="id1"><span>[STIR]</span></a>.</p></li>
+<li><p>For ‘dogbox’ : <code class="docutils literal notranslate"><span class="pre">norm(g_free,</span> <span class="pre">ord=inf)</span> <span class="pre">&lt;</span> <span class="pre">gtol</span></code>, where
+<code class="docutils literal notranslate"><span class="pre">g_free</span></code> is the gradient with respect to the variables which
+are not in the optimal state on the boundary.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>x_scale</strong> (<em>Tensor</em><em> or </em><em>'jac'</em><em>, </em><em>optional</em>) – Characteristic scale of each variable. Setting <cite>x_scale</cite> is equivalent
+to reformulating the problem in scaled variables <code class="docutils literal notranslate"><span class="pre">xs</span> <span class="pre">=</span> <span class="pre">x</span> <span class="pre">/</span> <span class="pre">x_scale</span></code>.
+An alternative view is that the size of a trust region along jth
+dimension is proportional to <code class="docutils literal notranslate"><span class="pre">x_scale[j]</span></code>. Improved convergence may
+be achieved by setting <cite>x_scale</cite> such that a step of a given size
+along any of the scaled variables has a similar effect on the cost
+function. If set to ‘jac’, the scale is iteratively updated using the
+inverse norms of the columns of the Jacobian matrix (as described in
+<a class="reference internal" href="#jjmore" id="id2"><span>[JJMore]</span></a>).</p></li>
+<li><p><strong>max_nfev</strong> (<em>None</em><em> or </em><em>int</em><em>, </em><em>optional</em>) – Maximum number of function evaluations before the termination.
+Defaults to 100 * n.</p></li>
+<li><p><strong>tr_solver</strong> (<em>str</em><em>, </em><em>optional</em>) – <p>Method for solving trust-region subproblems.</p>
+<blockquote>
+<div><ul>
+<li><p>’exact’ is suitable for not very large problems with dense
+Jacobian matrices. The computational complexity per iteration is
+comparable to a singular value decomposition of the Jacobian
+matrix.</p></li>
+<li><p>’lsmr’ is suitable for problems with sparse and large Jacobian
+matrices. It uses an iterative procedure for finding a solution
+of a linear least-squares problem and only requires matrix-vector
+product evaluations.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>tr_options</strong> (<em>dict</em><em>, </em><em>optional</em>) – <p>Keyword options passed to trust-region solver.</p>
+<blockquote>
+<div><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">tr_solver='exact'</span></code>: <cite>tr_options</cite> are ignored.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tr_solver='lsmr'</span></code>: options for <cite>scipy.sparse.linalg.lsmr</cite>.
+Additionally,  <code class="docutils literal notranslate"><span class="pre">method='trf'</span></code> supports  ‘regularize’ option
+(bool, default is True), which adds a regularization term to the
+normal equation, which improves convergence if the Jacobian is
+rank-deficient <a class="reference internal" href="#byrd" id="id3"><span>[Byrd]</span></a> (eq. 3.4).</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>verbose</strong> (<em>int</em><em>, </em><em>optional</em>) – <p>Level of algorithm’s verbosity.</p>
+<blockquote>
+<div><ul>
+<li><p>0 : work silently (default).</p></li>
+<li><p>1 : display a termination report.</p></li>
+<li><p>2 : display progress during iterations.</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>result</strong> – Result of the optimization routine.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OptimizeResult</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<div role="list" class="citation-list">
+<div class="citation" id="stir" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">STIR</a><span class="fn-bracket">]</span></span>
+<p>M. A. Branch, T. F. Coleman, and Y. Li, “A Subspace, Interior,
+and Conjugate Gradient Method for Large-Scale Bound-Constrained
+Minimization Problems,” SIAM Journal on Scientific Computing,
+Vol. 21, Number 1, pp 1-23, 1999.</p>
+</div>
+<div class="citation" id="byrd" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">Byrd</a><span class="fn-bracket">]</span></span>
+<p>R. H. Byrd, R. B. Schnabel and G. A. Shultz, “Approximate
+solution of the trust region problem by minimization over
+two-dimensional subspaces”, Math. Programming, 40, pp. 247-263,
+1988.</p>
+</div>
+<div class="citation" id="jjmore" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">JJMore</a><span class="fn-bracket">]</span></span>
+<p>J. J. More, “The Levenberg-Marquardt Algorithm: Implementation
+and Theory,” Numerical Analysis, ed. G. A. Watson, Lecture
+Notes in Mathematics 630, Springer Verlag, pp. 105-116, 1977.</p>
+</div>
+</div>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../minimize-constr-trust-constr.html" class="btn btn-neutral float-left" title="minimize_constr(method=’trust-constr’)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="torchmin.Minimizer.html" class="btn btn-neutral float-right" title="torchmin.Minimizer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+﻿torchmin.least\_squares
+=======================
+
+.. currentmodule:: torchmin
+
+.. autofunction:: least_squares

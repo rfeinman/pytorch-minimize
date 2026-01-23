@@ -1,0 +1,6 @@
+﻿torchmin.minimize\_constr
+=========================
+
+.. currentmodule:: torchmin
+
+.. autofunction:: minimize_constr

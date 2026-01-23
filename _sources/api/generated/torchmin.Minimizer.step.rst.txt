@@ -1,0 +1,6 @@
+﻿torchmin.Minimizer.step
+=======================
+
+.. currentmodule:: torchmin
+
+.. automethod:: Minimizer.step

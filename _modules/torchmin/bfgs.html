@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.bfgs &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Documentation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">torchmin.bfgs</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for torchmin.bfgs</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizeResult</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.function</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScalarFunction</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.line_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">strong_wolfe</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">_status_message</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize._optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">_status_message</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HessianUpdateStrategy</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_updates</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">rho_inv</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">rho_inv</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rho_inv</span> <span class="o">&lt;=</span> <span class="mf">1e-10</span><span class="p">:</span>
+            <span class="c1"># curvature is negative; do not update</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">rho_inv</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_updates</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">L_BFGS</span><span class="p">(</span><span class="n">HessianUpdateStrategy</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">history_size</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">s</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H_diag</span> <span class="o">=</span> <span class="mf">1.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">new_empty</span><span class="p">(</span><span class="n">history_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history_size</span> <span class="o">=</span> <span class="n">history_size</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+        <span class="n">mem_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">grad</span><span class="o">.</span><span class="n">neg</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">mem_size</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=-</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H_diag</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mem_size</span><span class="p">):</span>
+            <span class="n">beta_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">beta_i</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">d</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">rho_inv</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">history_size</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rho_inv</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H_diag</span> <span class="o">=</span> <span class="n">rho_inv</span> <span class="o">/</span> <span class="n">y</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BFGS</span><span class="p">(</span><span class="n">HessianUpdateStrategy</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inverse</span> <span class="o">=</span> <span class="n">inverse</span>
+        <span class="k">if</span> <span class="n">inverse</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">I</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">I</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">B</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">,</span> <span class="n">grad</span><span class="o">.</span><span class="n">neg</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cholesky_solve</span><span class="p">(</span><span class="n">grad</span><span class="o">.</span><span class="n">neg</span><span class="p">()</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+                                        <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">))</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">rho_inv</span><span class="p">):</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">rho_inv</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_updates</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="n">rho_inv</span> <span class="o">/</span> <span class="n">y</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">addr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">I</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=-</span><span class="n">rho</span><span class="p">)</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">addr</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">multi_dot</span><span class="p">((</span><span class="n">R</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">,</span> <span class="n">R</span><span class="o">.</span><span class="n">t</span><span class="p">())),</span>
+                <span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_updates</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="n">rho</span> <span class="o">*</span> <span class="n">y</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+            <span class="n">Bs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">addr_</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">rho</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">addr_</span><span class="p">(</span><span class="n">Bs</span><span class="p">,</span> <span class="n">Bs</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=-</span><span class="mf">1.</span><span class="o">/</span><span class="n">s</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Bs</span><span class="p">))</span>
+
+
+<span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_minimize_bfgs_core</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">low_mem</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">history_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">inv_hess</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">line_search</span><span class="o">=</span><span class="s1">&#39;strong-wolfe&#39;</span><span class="p">,</span> <span class="n">gtol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span>
+        <span class="n">gtd_tol</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">,</span> <span class="n">normp</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">return_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimize a multivariate function with BFGS or L-BFGS.</span>
+
+<span class="sd">    We choose from BFGS/L-BFGS with the `low_mem` argument.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Scalar objective function to minimize</span>
+<span class="sd">    x0 : Tensor</span>
+<span class="sd">        Initialization point</span>
+<span class="sd">    lr : float</span>
+<span class="sd">        Step size for parameter updates. If using line search, this will be</span>
+<span class="sd">        used as the initial step size for the search.</span>
+<span class="sd">    low_mem : bool</span>
+<span class="sd">        Whether to use L-BFGS, the &quot;low memory&quot; variant of the BFGS algorithm.</span>
+<span class="sd">    history_size : int</span>
+<span class="sd">        History size for L-BFGS hessian estimates. Ignored if `low_mem=False`.</span>
+<span class="sd">    inv_hess : bool</span>
+<span class="sd">        Whether to parameterize the inverse hessian vs. the hessian with BFGS.</span>
+<span class="sd">        Ignored if `low_mem=True` (L-BFGS always parameterizes the inverse).</span>
+<span class="sd">    max_iter : int, optional</span>
+<span class="sd">        Maximum number of iterations to perform. Defaults to 200 * x0.numel()</span>
+<span class="sd">    line_search : str</span>
+<span class="sd">        Line search specifier. Currently the available options are</span>
+<span class="sd">        {&#39;none&#39;, &#39;strong-wolfe&#39;}.</span>
+<span class="sd">    gtol : float</span>
+<span class="sd">        Termination tolerance on 1st-order optimality (gradient norm).</span>
+<span class="sd">    xtol : float</span>
+<span class="sd">        Termination tolerance on function/parameter changes.</span>
+<span class="sd">    gtd_tol : float</span>
+<span class="sd">        Tolerence used to verify that the search direction is a *descent</span>
+<span class="sd">        direction*. The directional derivative `gtd` should be negative for</span>
+<span class="sd">        descent; this check ensures that `gtd &lt; -xtol` (sufficiently negative).</span>
+<span class="sd">    normp : Number or str</span>
+<span class="sd">        The norm type to use for termination conditions. Can be any value</span>
+<span class="sd">        supported by `torch.norm` p argument.</span>
+<span class="sd">    callback : callable, optional</span>
+<span class="sd">        Function to call after each iteration with the current parameter</span>
+<span class="sd">        state, e.g. ``callback(x)``.</span>
+<span class="sd">    disp : int or bool</span>
+<span class="sd">        Display (verbosity) level. Set to &gt;0 to print status messages.</span>
+<span class="sd">    return_all : bool, optional</span>
+<span class="sd">        Set to True to return a list of the best solution at each of the</span>
+<span class="sd">        iterations.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lr</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lr</span><span class="p">)</span>
+    <span class="n">disp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">disp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">max_iter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">max_iter</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">*</span> <span class="mi">200</span>
+    <span class="k">if</span> <span class="n">low_mem</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">inv_hess</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;inv_hess=False is not available for L-BFGS.&#39;</span><span class="p">)</span>
+
+    <span class="c1"># construct scalar objective function</span>
+    <span class="n">sf</span> <span class="o">=</span> <span class="n">ScalarFunction</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">closure</span> <span class="o">=</span> <span class="n">sf</span><span class="o">.</span><span class="n">closure</span>
+    <span class="k">if</span> <span class="n">line_search</span> <span class="o">==</span> <span class="s1">&#39;strong-wolfe&#39;</span><span class="p">:</span>
+        <span class="n">dir_evaluate</span> <span class="o">=</span> <span class="n">sf</span><span class="o">.</span><span class="n">dir_evaluate</span>
+
+    <span class="c1"># compute initial f(x) and f&#39;(x)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">memory_format</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">contiguous_format</span><span class="p">)</span>
+    <span class="n">f</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">closure</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">disp</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;initial fval: </span><span class="si">%0.4f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">f</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">return_all</span><span class="p">:</span>
+        <span class="n">allvecs</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">]</span>
+
+    <span class="c1"># initial settings</span>
+    <span class="k">if</span> <span class="n">low_mem</span><span class="p">:</span>
+        <span class="n">hess</span> <span class="o">=</span> <span class="n">L_BFGS</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">history_size</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">hess</span> <span class="o">=</span> <span class="n">BFGS</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">inv_hess</span><span class="p">)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">neg</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="n">g</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reciprocal</span><span class="p">())</span> <span class="o">*</span> <span class="n">lr</span>
+    <span class="n">n_iter</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># BFGS iterations</span>
+    <span class="k">for</span> <span class="n">n_iter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+
+        <span class="c1"># ==================================</span>
+        <span class="c1">#   compute Quasi-Newton direction</span>
+        <span class="c1"># ==================================</span>
+
+        <span class="k">if</span> <span class="n">n_iter</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">hess</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+
+        <span class="c1"># directional derivative</span>
+        <span class="n">gtd</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+
+        <span class="c1"># check if directional derivative is below tolerance</span>
+        <span class="k">if</span> <span class="n">gtd</span> <span class="o">&gt;</span> <span class="o">-</span><span class="n">gtd_tol</span><span class="p">:</span>
+            <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">4</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;A non-descent direction was encountered.&#39;</span>
+            <span class="k">break</span>
+
+        <span class="c1"># ======================</span>
+        <span class="c1">#   update parameter</span>
+        <span class="c1"># ======================</span>
+
+        <span class="k">if</span> <span class="n">line_search</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span><span class="p">:</span>
+            <span class="c1"># no line search, move with fixed-step</span>
+            <span class="n">x_new</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">d</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+            <span class="n">f_new</span><span class="p">,</span> <span class="n">g_new</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">closure</span><span class="p">(</span><span class="n">x_new</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">line_search</span> <span class="o">==</span> <span class="s1">&#39;strong-wolfe&#39;</span><span class="p">:</span>
+            <span class="c1">#  Determine step size via strong-wolfe line search</span>
+            <span class="n">f_new</span><span class="p">,</span> <span class="n">g_new</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">ls_evals</span> <span class="o">=</span> \
+                <span class="n">strong_wolfe</span><span class="p">(</span><span class="n">dir_evaluate</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">gtd</span><span class="p">)</span>
+            <span class="n">x_new</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">d</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;invalid line_search option </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line_search</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">disp</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;iter </span><span class="si">%3d</span><span class="s1"> - fval: </span><span class="si">%0.4f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">n_iter</span><span class="p">,</span> <span class="n">f_new</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">return_all</span><span class="p">:</span>
+            <span class="n">allvecs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_new</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">callback</span><span class="p">(</span><span class="n">x_new</span><span class="p">):</span>
+                <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">5</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Stopped by the user through the callback function.&#39;</span>
+                <span class="k">break</span>
+
+
+        <span class="c1"># ================================</span>
+        <span class="c1">#   update hessian approximation</span>
+        <span class="c1"># ================================</span>
+
+        <span class="n">s</span> <span class="o">=</span> <span class="n">x_new</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">g_new</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+
+        <span class="n">hess</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+        <span class="c1"># =========================================</span>
+        <span class="c1">#   check conditions and update buffers</span>
+        <span class="c1"># =========================================</span>
+
+        <span class="c1"># convergence by insufficient progress</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="n">normp</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">xtol</span><span class="p">)</span> <span class="o">|</span> <span class="p">((</span><span class="n">f_new</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">xtol</span><span class="p">):</span>
+            <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">_status_message</span><span class="p">[</span><span class="s1">&#39;success&#39;</span><span class="p">]</span>
+            <span class="k">break</span>
+
+        <span class="c1"># update state</span>
+        <span class="n">f</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">f_new</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">x_new</span><span class="p">)</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">g_new</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">lr</span>
+
+        <span class="c1"># convergence by 1st-order optimality</span>
+        <span class="k">if</span> <span class="n">g</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="n">normp</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">gtol</span><span class="p">:</span>
+            <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">_status_message</span><span class="p">[</span><span class="s1">&#39;success&#39;</span><span class="p">]</span>
+            <span class="k">break</span>
+
+        <span class="c1"># precision loss; exit</span>
+        <span class="k">if</span> <span class="o">~</span><span class="n">f</span><span class="o">.</span><span class="n">isfinite</span><span class="p">():</span>
+            <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">_status_message</span><span class="p">[</span><span class="s1">&#39;pr_loss&#39;</span><span class="p">]</span>
+            <span class="k">break</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># if we get to the end, the maximum num. iterations was reached</span>
+        <span class="n">warnflag</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">_status_message</span><span class="p">[</span><span class="s1">&#39;maxiter&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;         Current function value: </span><span class="si">%f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">f</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;         Iterations: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">n_iter</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;         Function evaluations: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">sf</span><span class="o">.</span><span class="n">nfev</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">OptimizeResult</span><span class="p">(</span><span class="n">fun</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">view_as</span><span class="p">(</span><span class="n">x0</span><span class="p">),</span> <span class="n">grad</span><span class="o">=</span><span class="n">g</span><span class="o">.</span><span class="n">view_as</span><span class="p">(</span><span class="n">x0</span><span class="p">),</span>
+                            <span class="n">status</span><span class="o">=</span><span class="n">warnflag</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="p">(</span><span class="n">warnflag</span><span class="o">==</span><span class="mi">0</span><span class="p">),</span>
+                            <span class="n">message</span><span class="o">=</span><span class="n">msg</span><span class="p">,</span> <span class="n">nit</span><span class="o">=</span><span class="n">n_iter</span><span class="p">,</span> <span class="n">nfev</span><span class="o">=</span><span class="n">sf</span><span class="o">.</span><span class="n">nfev</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">low_mem</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">inv_hess</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;hess_inv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hess</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;hess&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hess</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">return_all</span><span class="p">:</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;allvecs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">allvecs</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="_minimize_bfgs"><a class="viewcode-back" href="../../api/minimize-bfgs.html#torchmin.bfgs._minimize_bfgs">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">_minimize_bfgs</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">inv_hess</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">line_search</span><span class="o">=</span><span class="s1">&#39;strong-wolfe&#39;</span><span class="p">,</span> <span class="n">gtol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">gtd_tol</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">,</span>
+        <span class="n">normp</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimize a multivariate function with BFGS</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Scalar objective function to minimize.</span>
+<span class="sd">    x0 : Tensor</span>
+<span class="sd">        Initialization point.</span>
+<span class="sd">    lr : float</span>
+<span class="sd">        Step size for parameter updates. If using line search, this will be</span>
+<span class="sd">        used as the initial step size for the search.</span>
+<span class="sd">    inv_hess : bool</span>
+<span class="sd">        Whether to parameterize the inverse hessian vs. the hessian with BFGS.</span>
+<span class="sd">    max_iter : int, optional</span>
+<span class="sd">        Maximum number of iterations to perform. Defaults to</span>
+<span class="sd">        ``200 * x0.numel()``.</span>
+<span class="sd">    line_search : str</span>
+<span class="sd">        Line search specifier. Currently the available options are</span>
+<span class="sd">        {&#39;none&#39;, &#39;strong-wolfe&#39;}.</span>
+<span class="sd">    gtol : float</span>
+<span class="sd">        Termination tolerance on 1st-order optimality (gradient norm).</span>
+<span class="sd">    xtol : float</span>
+<span class="sd">        Termination tolerance on function/parameter changes.</span>
+<span class="sd">    gtd_tol : float</span>
+<span class="sd">        Tolerence used to verify that the search direction is a *descent</span>
+<span class="sd">        direction*. The directional derivative `gtd` should be negative for</span>
+<span class="sd">        descent; this check ensures that `gtd &lt; -xtol` (sufficiently negative).</span>
+<span class="sd">    normp : Number or str</span>
+<span class="sd">        The norm type to use for termination conditions. Can be any value</span>
+<span class="sd">        supported by :func:`torch.norm`.</span>
+<span class="sd">    callback : callable, optional</span>
+<span class="sd">        Function to call after each iteration with the current parameter</span>
+<span class="sd">        state, e.g. ``callback(x)``.</span>
+<span class="sd">    disp : int or bool</span>
+<span class="sd">        Display (verbosity) level. Set to &gt;0 to print status messages.</span>
+<span class="sd">    return_all : bool, optional</span>
+<span class="sd">        Set to True to return a list of the best solution at each of the</span>
+<span class="sd">        iterations.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_minimize_bfgs_core</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">lr</span><span class="p">,</span> <span class="n">low_mem</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">inv_hess</span><span class="o">=</span><span class="n">inv_hess</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="n">max_iter</span><span class="p">,</span>
+        <span class="n">line_search</span><span class="o">=</span><span class="n">line_search</span><span class="p">,</span> <span class="n">gtol</span><span class="o">=</span><span class="n">gtol</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="n">xtol</span><span class="p">,</span> <span class="n">gtd_tol</span><span class="o">=</span><span class="n">gtd_tol</span><span class="p">,</span>
+        <span class="n">normp</span><span class="o">=</span><span class="n">normp</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="n">disp</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="n">return_all</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="_minimize_lbfgs"><a class="viewcode-back" href="../../api/minimize-lbfgs.html#torchmin.bfgs._minimize_lbfgs">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">_minimize_lbfgs</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">history_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">line_search</span><span class="o">=</span><span class="s1">&#39;strong-wolfe&#39;</span><span class="p">,</span> <span class="n">gtol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">gtd_tol</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">,</span>
+        <span class="n">normp</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimize a multivariate function with L-BFGS</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Scalar objective function to minimize.</span>
+<span class="sd">    x0 : Tensor</span>
+<span class="sd">        Initialization point.</span>
+<span class="sd">    lr : float</span>
+<span class="sd">        Step size for parameter updates. If using line search, this will be</span>
+<span class="sd">        used as the initial step size for the search.</span>
+<span class="sd">    history_size : int</span>
+<span class="sd">        History size for L-BFGS hessian estimates.</span>
+<span class="sd">    max_iter : int, optional</span>
+<span class="sd">        Maximum number of iterations to perform. Defaults to</span>
+<span class="sd">        ``200 * x0.numel()``.</span>
+<span class="sd">    line_search : str</span>
+<span class="sd">        Line search specifier. Currently the available options are</span>
+<span class="sd">        {&#39;none&#39;, &#39;strong-wolfe&#39;}.</span>
+<span class="sd">    gtol : float</span>
+<span class="sd">        Termination tolerance on 1st-order optimality (gradient norm).</span>
+<span class="sd">    xtol : float</span>
+<span class="sd">        Termination tolerance on function/parameter changes.</span>
+<span class="sd">    gtd_tol : float</span>
+<span class="sd">        Tolerence used to verify that the search direction is a *descent</span>
+<span class="sd">        direction*. The directional derivative `gtd` should be negative for</span>
+<span class="sd">        descent; this check ensures that `gtd &lt; -xtol` (sufficiently negative).</span>
+<span class="sd">    normp : Number or str</span>
+<span class="sd">        The norm type to use for termination conditions. Can be any value</span>
+<span class="sd">        supported by :func:`torch.norm`.</span>
+<span class="sd">    callback : callable, optional</span>
+<span class="sd">        Function to call after each iteration with the current parameter</span>
+<span class="sd">        state, e.g. ``callback(x)``.</span>
+<span class="sd">    disp : int or bool</span>
+<span class="sd">        Display (verbosity) level. Set to &gt;0 to print status messages.</span>
+<span class="sd">    return_all : bool, optional</span>
+<span class="sd">        Set to True to return a list of the best solution at each of the</span>
+<span class="sd">        iterations.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_minimize_bfgs_core</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">lr</span><span class="p">,</span> <span class="n">low_mem</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">history_size</span><span class="o">=</span><span class="n">history_size</span><span class="p">,</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="n">max_iter</span><span class="p">,</span> <span class="n">line_search</span><span class="o">=</span><span class="n">line_search</span><span class="p">,</span> <span class="n">gtol</span><span class="o">=</span><span class="n">gtol</span><span class="p">,</span> <span class="n">xtol</span><span class="o">=</span><span class="n">xtol</span><span class="p">,</span>
+        <span class="n">gtd_tol</span><span class="o">=</span><span class="n">gtd_tol</span><span class="p">,</span> <span class="n">normp</span><span class="o">=</span><span class="n">normp</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="n">disp</span><span class="p">,</span>
+        <span class="n">return_all</span><span class="o">=</span><span class="n">return_all</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

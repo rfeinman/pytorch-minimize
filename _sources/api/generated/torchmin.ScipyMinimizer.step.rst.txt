@@ -1,0 +1,6 @@
+﻿torchmin.ScipyMinimizer.step
+============================
+
+.. currentmodule:: torchmin
+
+.. automethod:: ScipyMinimizer.step

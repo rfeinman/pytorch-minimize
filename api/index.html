@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Documentation &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="torchmin.minimize" href="generated/torchmin.minimize.html" />
+    <link rel="prev" title="User Guide" href="../user_guide/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#functional-api">Functional API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.minimize.html">torchmin.minimize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-bfgs.html">minimize(method=’bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-lbfgs.html">minimize(method=’l-bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-cg.html">minimize(method=’cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-newton-cg.html">minimize(method=’newton-cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-newton-exact.html">minimize(method=’newton-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-dogleg.html">minimize(method=’dogleg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-ncg.html">minimize(method=’trust-ncg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-exact.html">minimize(method=’trust-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-krylov.html">minimize(method=’trust-krylov’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.minimize_constr.html">torchmin.minimize_constr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-lbfgsb.html">minimize_constr(method=’l-bfgs-b’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-frankwolfe.html">minimize_constr(method=’frank-wolfe’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-trust-constr.html">minimize_constr(method=’trust-constr’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.least_squares.html">torchmin.least_squares</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#optimizer-api">Optimizer API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.Minimizer.html">torchmin.Minimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.Minimizer.step.html">torchmin.Minimizer.step</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.ScipyMinimizer.html">torchmin.ScipyMinimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.ScipyMinimizer.step.html">torchmin.ScipyMinimizer.step</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-documentation">
+<h1>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this heading"></a></h1>
+<section id="functional-api">
+<h2>Functional API<a class="headerlink" href="#functional-api" title="Permalink to this heading"></a></h2>
+<p>The functional API provides an interface similar to those of SciPy’s <code class="xref py py-mod docutils literal notranslate"><span class="pre">optimize</span></code> module and MATLAB’s <code class="docutils literal notranslate"><span class="pre">fminunc</span></code>/<code class="docutils literal notranslate"><span class="pre">fmincon</span></code> routines. Parameters are provided as a single torch Tensor, and an <code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizeResult</span></code> instance is returned that includes the optimized parameter value as well as other useful information (e.g. final function value, parameter gradient, etc.).</p>
+<p>There are 3 core utilities in the functional API, designed for 3 unique
+numerical optimization problems.</p>
+<p><strong>Unconstrained minimization</strong></p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/torchmin.minimize.html#torchmin.minimize" title="torchmin.minimize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">minimize</span></code></a>(fun, x0, method[, max_iter, tol, ...])</p></td>
+<td><p>Minimize a scalar function of one or more variables.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The <a class="reference internal" href="generated/torchmin.minimize.html#torchmin.minimize" title="torchmin.minimize"><code class="xref py py-func docutils literal notranslate"><span class="pre">minimize()</span></code></a> function is a general utility for <em>unconstrained</em> minimization. It implements a number of different routines based on Newton and Quasi-Newton methods for numerical optimization. The following methods are supported, accessed via the <cite>method</cite> argument:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="minimize-bfgs.html">minimize(method=’bfgs’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-lbfgs.html">minimize(method=’l-bfgs’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-cg.html">minimize(method=’cg’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-newton-cg.html">minimize(method=’newton-cg’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-newton-exact.html">minimize(method=’newton-exact’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-dogleg.html">minimize(method=’dogleg’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-trust-ncg.html">minimize(method=’trust-ncg’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-trust-exact.html">minimize(method=’trust-exact’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-trust-krylov.html">minimize(method=’trust-krylov’)</a></li>
+</ul>
+</div>
+<p><strong>Constrained minimization</strong></p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/torchmin.minimize_constr.html#torchmin.minimize_constr" title="torchmin.minimize_constr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">minimize_constr</span></code></a>(f, x0[, method, constr, ...])</p></td>
+<td><p>Minimize a scalar function of one or more variables subject to bounds and/or constraints.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The <a class="reference internal" href="generated/torchmin.minimize_constr.html#torchmin.minimize_constr" title="torchmin.minimize_constr"><code class="xref py py-func docutils literal notranslate"><span class="pre">minimize_constr()</span></code></a> function is a general utility for <em>constrained</em> minimization. Algorithms for constrained minimization use Newton and Quasi-Newton methods on the KKT conditions of the constrained optimization problem. The following methods are currently supported:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="minimize-constr-lbfgsb.html">minimize_constr(method=’l-bfgs-b’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-constr-frankwolfe.html">minimize_constr(method=’frank-wolfe’)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="minimize-constr-trust-constr.html">minimize_constr(method=’trust-constr’)</a></li>
+</ul>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Method <code class="docutils literal notranslate"><span class="pre">'trust-constr'</span></code> is currently a wrapper for SciPy’s <em>trust-constr</em> minimization method. CUDA tensors are supported, but CUDA will only be used for function and gradient evaluation, with the remaining solver computations performed on CPU (with numpy arrays).</p>
+</div>
+<p><strong>Nonlinear least-squares</strong></p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/torchmin.least_squares.html#torchmin.least_squares" title="torchmin.least_squares"><code class="xref py py-obj docutils literal notranslate"><span class="pre">least_squares</span></code></a>(fun, x0[, bounds, method, ...])</p></td>
+<td><p>Solve a nonlinear least-squares problem with bounds on the variables.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The <a class="reference internal" href="generated/torchmin.least_squares.html#torchmin.least_squares" title="torchmin.least_squares"><code class="xref py py-func docutils literal notranslate"><span class="pre">least_squares()</span></code></a> function is a specialized utility for nonlinear least-squares minimization problems. Algorithms for least-squares revolve around the Gauss-Newton method, a modification of Newton’s method tailored to residual sum-of-squares (RSS) optimization. The following methods are currently supported:</p>
+<ul class="simple">
+<li><p>Trust-region reflective</p></li>
+<li><p>Dogleg - COMING SOON</p></li>
+<li><p>Gauss-Newton line search - COMING SOON</p></li>
+</ul>
+</section>
+<section id="optimizer-api">
+<h2>Optimizer API<a class="headerlink" href="#optimizer-api" title="Permalink to this heading"></a></h2>
+<p>The optimizer API provides an alternative interface based on PyTorch’s <code class="xref py py-mod docutils literal notranslate"><span class="pre">optim</span></code> module. This interface follows the schematic of PyTorch optimizers and will be familiar to those migrating from torch.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/torchmin.Minimizer.html#torchmin.Minimizer" title="torchmin.Minimizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Minimizer</span></code></a>(params[, method])</p></td>
+<td><p>A general-purpose PyTorch optimizer for unconstrained function minimization.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/torchmin.Minimizer.step.html#torchmin.Minimizer.step" title="torchmin.Minimizer.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Minimizer.step</span></code></a>(closure)</p></td>
+<td><p>Perform an optimization step.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The <a class="reference internal" href="generated/torchmin.Minimizer.html#torchmin.Minimizer" title="torchmin.Minimizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Minimizer</span></code></a> class inherits from <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.optim.Optimizer</span></code> and constructs an object that holds the state of the provided variables. Unlike the functional API, which expects parameters to be a single Tensor, parameters can be passed to <a class="reference internal" href="generated/torchmin.Minimizer.html#torchmin.Minimizer" title="torchmin.Minimizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Minimizer</span></code></a> as iterables of Tensors. The class serves as a wrapper for <a class="reference internal" href="generated/torchmin.minimize.html#torchmin.minimize" title="torchmin.minimize"><code class="xref py py-func docutils literal notranslate"><span class="pre">torchmin.minimize()</span></code></a> and can use any of its methods (selected via the <cite>method</cite> argument) to perform unconstrained minimization.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/torchmin.ScipyMinimizer.html#torchmin.ScipyMinimizer" title="torchmin.ScipyMinimizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScipyMinimizer</span></code></a>(params[, method, bounds, ...])</p></td>
+<td><p>A PyTorch optimizer for constrained &amp; unconstrained function minimization.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/torchmin.ScipyMinimizer.step.html#torchmin.ScipyMinimizer.step" title="torchmin.ScipyMinimizer.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScipyMinimizer.step</span></code></a>(closure)</p></td>
+<td><p>Perform an optimization step.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Although the <a class="reference internal" href="generated/torchmin.Minimizer.html#torchmin.Minimizer" title="torchmin.Minimizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Minimizer</span></code></a> class will be sufficient for most problems where torch optimizers would be used, it does not support constraints. Another optimizer is provided, <a class="reference internal" href="generated/torchmin.ScipyMinimizer.html#torchmin.ScipyMinimizer" title="torchmin.ScipyMinimizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScipyMinimizer</span></code></a>, which supports parameter bounds and linear/nonlinear constraint functions. This optimizer is a wrapper for <code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.optimize.minimize()</span></code>. When using bound constraints, <cite>bounds</cite> are passed as iterables with same length as <cite>params</cite>, i.e. one bound specification per parameter Tensor.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../user_guide/index.html" class="btn btn-neutral float-left" title="User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="generated/torchmin.minimize.html" class="btn btn-neutral float-right" title="torchmin.minimize" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.optim.scipy_minimizer &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">torchmin.optim.scipy_minimizer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for torchmin.optim.scipy_minimizer</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numbers</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">reduce</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optimizer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">optimize</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch._vmap_internals</span><span class="w"> </span><span class="kn">import</span> <span class="n">_vmap</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.autograd.functional</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">_construct_standard_basis_for</span><span class="p">,</span>
+                                       <span class="n">_grad_postprocess</span><span class="p">,</span> <span class="n">_tuple_postprocess</span><span class="p">,</span>
+                                       <span class="n">_as_tuple</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_bounds</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">numel_total</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;bounds must be an iterable with same length as params&#39;</span><span class="p">)</span>
+
+    <span class="n">lb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">numel_total</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+    <span class="n">ub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">numel_total</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+    <span class="n">keep_feasible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">numel_total</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_bound</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">numel</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">==</span> <span class="n">numel</span>
+            <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">numel</span>
+            <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">bool</span><span class="p">,</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">x</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;invalid bound value.&#39;</span><span class="p">)</span>
+
+    <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">bound</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="n">numel</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">bound</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="n">numel</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">bound</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;elements of &quot;bounds&quot; must each be a &#39;</span>
+                             <span class="s1">&#39;list/tuple of length 2 or 3&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bound</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">bound</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;either lower or upper bound must be defined.&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bound</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lb</span><span class="p">[</span><span class="n">offset</span><span class="p">:</span><span class="n">offset</span> <span class="o">+</span> <span class="n">numel</span><span class="p">]</span> <span class="o">=</span> <span class="n">process_bound</span><span class="p">(</span><span class="n">bound</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">numel</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bound</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ub</span><span class="p">[</span><span class="n">offset</span><span class="p">:</span><span class="n">offset</span> <span class="o">+</span> <span class="n">numel</span><span class="p">]</span> <span class="o">=</span> <span class="n">process_bound</span><span class="p">(</span><span class="n">bound</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">numel</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bound</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">keep_feasible</span><span class="p">[</span><span class="n">offset</span><span class="p">:</span><span class="n">offset</span> <span class="o">+</span> <span class="n">numel</span><span class="p">]</span> <span class="o">=</span> <span class="n">process_bound</span><span class="p">(</span><span class="n">bound</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">numel</span><span class="p">)</span>
+        <span class="n">offset</span> <span class="o">+=</span> <span class="n">numel</span>
+
+    <span class="k">return</span> <span class="n">optimize</span><span class="o">.</span><span class="n">Bounds</span><span class="p">(</span><span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">keep_feasible</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_jacobian</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A modified variant of torch.autograd.functional.jacobian for</span>
+<span class="sd">    pre-computed outputs</span>
+
+<span class="sd">    This is only used for nonlinear parameter constraints (if provided)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_inputs_tuple</span><span class="p">,</span> <span class="n">inputs</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="s2">&quot;inputs&quot;</span><span class="p">,</span> <span class="s2">&quot;jacobian&quot;</span><span class="p">)</span>
+    <span class="n">is_outputs_tuple</span><span class="p">,</span> <span class="n">outputs</span> <span class="o">=</span> <span class="n">_as_tuple</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="s2">&quot;outputs&quot;</span><span class="p">,</span> <span class="s2">&quot;jacobian&quot;</span><span class="p">)</span>
+
+    <span class="n">output_numels</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">)</span>
+    <span class="n">grad_outputs</span> <span class="o">=</span> <span class="n">_construct_standard_basis_for</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">output_numels</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">enable_grad</span><span class="p">():</span>
+        <span class="n">flat_outputs</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">vjp</span><span class="p">(</span><span class="n">grad_output</span><span class="p">):</span>
+        <span class="n">vj</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">flat_outputs</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">grad_output</span><span class="p">,</span> <span class="n">allow_unused</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">el_idx</span><span class="p">,</span> <span class="n">vj_el</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">vj</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">vj_el</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">vj</span><span class="p">[</span><span class="n">el_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="n">el_idx</span><span class="p">])</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">vj</span><span class="p">)</span>
+
+    <span class="n">jacobians_of_flat_output</span> <span class="o">=</span> <span class="n">_vmap</span><span class="p">(</span><span class="n">vjp</span><span class="p">)(</span><span class="n">grad_outputs</span><span class="p">)</span>
+
+    <span class="n">jacobian_input_output</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">jac</span><span class="p">,</span> <span class="n">input_i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">jacobians_of_flat_output</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="n">jacobian_input_i_output</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">jac</span><span class="p">,</span> <span class="n">output_j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">jac</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">output_numels</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">outputs</span><span class="p">):</span>
+            <span class="n">jacobian_input_i_output_j</span> <span class="o">=</span> <span class="n">jac</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">output_j</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="n">input_i</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">jacobian_input_i_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">jacobian_input_i_output_j</span><span class="p">)</span>
+        <span class="n">jacobian_input_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">jacobian_input_i_output</span><span class="p">)</span>
+
+    <span class="n">jacobian_output_input</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">jacobian_input_output</span><span class="p">))</span>
+
+    <span class="n">jacobian_output_input</span> <span class="o">=</span> <span class="n">_grad_postprocess</span><span class="p">(</span><span class="n">jacobian_output_input</span><span class="p">,</span> <span class="n">create_graph</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_tuple_postprocess</span><span class="p">(</span><span class="n">jacobian_output_input</span><span class="p">,</span> <span class="p">(</span><span class="n">is_outputs_tuple</span><span class="p">,</span> <span class="n">is_inputs_tuple</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="ScipyMinimizer"><a class="viewcode-back" href="../../../api/generated/torchmin.ScipyMinimizer.html#torchmin.ScipyMinimizer">[docs]</a><span class="k">class</span><span class="w"> </span><span class="nc">ScipyMinimizer</span><span class="p">(</span><span class="n">Optimizer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A PyTorch optimizer for constrained &amp; unconstrained function</span>
+<span class="sd">    minimization.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        This optimizer is a wrapper for :func:`scipy.optimize.minimize`.</span>
+<span class="sd">        It uses autograd behind the scenes to build jacobian &amp; hessian</span>
+<span class="sd">        callables before invoking scipy. Inputs and objectivs should use</span>
+<span class="sd">        PyTorch tensors like other routines. CUDA is supported; however,</span>
+<span class="sd">        data will be transferred back-and-forth between GPU/CPU.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        This optimizer doesn&#39;t support per-parameter options and parameter</span>
+<span class="sd">        groups (there can be only one).</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        Right now all parameters have to be on a single device. This will be</span>
+<span class="sd">        improved in the future.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : iterable</span>
+<span class="sd">        An iterable of :class:`torch.Tensor` s. Specifies what Tensors</span>
+<span class="sd">        should be optimized.</span>
+<span class="sd">    method : str</span>
+<span class="sd">        One of the various optimization methods offered in scipy minimize.</span>
+<span class="sd">        Defaults to &#39;bfgs&#39;.</span>
+<span class="sd">    bounds : iterable, optional</span>
+<span class="sd">        An iterable of :class:`torch.Tensor` s or :class:`float` s with same</span>
+<span class="sd">        length as `params`. Specifies boundaries for each parameter.</span>
+<span class="sd">    constraints : dict, optional</span>
+<span class="sd">        TODO</span>
+<span class="sd">    tol : float, optional</span>
+<span class="sd">        TODO</span>
+<span class="sd">    options : dict, optional</span>
+<span class="sd">        TODO</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="ScipyMinimizer.__init__"><a class="viewcode-back" href="../../../api/generated/torchmin.ScipyMinimizer.html#torchmin.ScipyMinimizer.__init__">[docs]</a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">params</span><span class="p">,</span>
+                 <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bfgs&#39;</span><span class="p">,</span>
+                 <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">constraints</span><span class="o">=</span><span class="p">(),</span>  <span class="c1"># experimental feature! use with caution</span>
+                 <span class="n">tol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">defaults</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+            <span class="n">constraints</span><span class="o">=</span><span class="n">constraints</span><span class="p">,</span>
+            <span class="n">tol</span><span class="o">=</span><span class="n">tol</span><span class="p">,</span>
+            <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">defaults</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">param_groups</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Minimize doesn&#39;t support per-parameter options &quot;</span>
+                             <span class="s2">&quot;(parameter groups)&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">constraints</span> <span class="o">!=</span> <span class="p">()</span> <span class="ow">and</span> <span class="n">method</span> <span class="o">!=</span> <span class="s1">&#39;trust-constr&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Constraints only currently supported for &quot;</span>
+                                      <span class="s2">&quot;method=&#39;trust-constr&#39;.&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;params&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_param_bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;bounds&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numel_cache</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bounds_cache</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_numel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numel_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_numel_cache</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">total</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="n">total</span> <span class="o">+</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numel_cache</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_param_bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounds_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bounds_cache</span> <span class="o">=</span> <span class="n">_build_bounds</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_param_bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">_numel</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounds_cache</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_gather_flat_param</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">views</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">is_sparse</span><span class="p">:</span>
+                <span class="n">view</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">to_dense</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">view</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">views</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_gather_flat_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">views</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">view</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">new_zeros</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">is_sparse</span><span class="p">:</span>
+                <span class="n">view</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">to_dense</span><span class="p">()</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">view</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">views</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_flat_param</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">:</span>
+            <span class="n">numel</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+            <span class="c1"># view as to avoid deprecated pointwise semantics</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="n">offset</span><span class="p">:</span><span class="n">offset</span> <span class="o">+</span> <span class="n">numel</span><span class="p">]</span><span class="o">.</span><span class="n">view_as</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="n">numel</span>
+        <span class="k">assert</span> <span class="n">offset</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numel</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">constraints</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">constraints</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s1">&#39;fun&#39;</span> <span class="ow">in</span> <span class="n">constraints</span>
+        <span class="k">assert</span> <span class="s1">&#39;lb&#39;</span> <span class="ow">in</span> <span class="n">constraints</span> <span class="ow">or</span> <span class="s1">&#39;ub&#39;</span> <span class="ow">in</span> <span class="n">constraints</span>
+
+        <span class="n">to_tensor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">new_tensor</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">to_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">fun_</span> <span class="o">=</span> <span class="n">constraints</span><span class="p">[</span><span class="s1">&#39;fun&#39;</span><span class="p">]</span>
+        <span class="n">lb</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lb&#39;</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+        <span class="n">ub</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ub&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+        <span class="n">strict</span> <span class="o">=</span> <span class="n">constraints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;keep_feasible&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">lb</span> <span class="o">=</span> <span class="n">to_array</span><span class="p">(</span><span class="n">lb</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">lb</span><span class="p">)</span> <span class="k">else</span> <span class="n">lb</span>
+        <span class="n">ub</span> <span class="o">=</span> <span class="n">to_array</span><span class="p">(</span><span class="n">ub</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">ub</span><span class="p">)</span> <span class="k">else</span> <span class="n">ub</span>
+        <span class="n">strict</span> <span class="o">=</span> <span class="n">to_array</span><span class="p">(</span><span class="n">strict</span><span class="p">)</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">strict</span><span class="p">)</span> <span class="k">else</span> <span class="n">strict</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">fun</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_flat_param</span><span class="p">(</span><span class="n">to_tensor</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">to_array</span><span class="p">(</span><span class="n">fun_</span><span class="p">())</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">jac</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_flat_param</span><span class="p">(</span><span class="n">to_tensor</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">enable_grad</span><span class="p">():</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="n">fun_</span><span class="p">()</span>
+
+            <span class="c1"># this is now a tuple of tensors, one per parameter, each with</span>
+            <span class="c1"># shape (num_outputs, *param_shape).</span>
+            <span class="n">J_seq</span> <span class="o">=</span> <span class="n">_jacobian</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">),</span> <span class="n">outputs</span><span class="o">=</span><span class="n">output</span><span class="p">)</span>
+
+            <span class="c1"># flatten and stack the tensors along dim 1 to get our full matrix</span>
+            <span class="n">J</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">elt</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">numel</span><span class="p">(),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">elt</span> <span class="ow">in</span> <span class="n">J_seq</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">to_array</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">optimize</span><span class="o">.</span><span class="n">NonlinearConstraint</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">jac</span><span class="o">=</span><span class="n">jac</span><span class="p">,</span> <span class="n">keep_feasible</span><span class="o">=</span><span class="n">strict</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ScipyMinimizer.step"><a class="viewcode-back" href="../../../api/generated/torchmin.ScipyMinimizer.step.html#torchmin.ScipyMinimizer.step">[docs]</a>    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">closure</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform an optimization step.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        closure : callable</span>
+<span class="sd">            A function that re-evaluates the model and returns the loss.</span>
+<span class="sd">            See the `closure instructions</span>
+<span class="sd">            &lt;https://pytorch.org/docs/stable/optim.html#optimizer-step-closure&gt;`_</span>
+<span class="sd">            from PyTorch Optimizer docs for areference on how to construct</span>
+<span class="sd">            this callable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># sanity check</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">param_groups</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="c1"># functions to convert numpy -&gt; torch and torch -&gt; numpy</span>
+        <span class="n">to_tensor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">new_tensor</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">to_array</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+        <span class="c1"># optimizer settings</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s1">&#39;method&#39;</span><span class="p">]</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">()</span>
+        <span class="n">constraints</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s1">&#39;constraints&#39;</span><span class="p">]</span>
+        <span class="n">tol</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s1">&#39;tol&#39;</span><span class="p">]</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s1">&#39;options&#39;</span><span class="p">]</span>
+
+        <span class="c1"># build constraints (if provided)</span>
+        <span class="k">if</span> <span class="n">constraints</span> <span class="o">!=</span> <span class="p">():</span>
+            <span class="n">constraints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_constraints</span><span class="p">(</span><span class="n">constraints</span><span class="p">)</span>
+
+        <span class="c1"># build objective</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">fun</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">to_tensor</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_flat_param</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">enable_grad</span><span class="p">():</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="n">closure</span><span class="p">()</span>
+            <span class="n">grad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gather_flat_grad</span><span class="p">()</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss</span><span class="p">),</span> <span class="n">to_array</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span>
+
+        <span class="c1"># initial value (numpy array)</span>
+        <span class="n">x0</span> <span class="o">=</span> <span class="n">to_array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_gather_flat_param</span><span class="p">())</span>
+
+        <span class="c1"># optimize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+            <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">jac</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+            <span class="n">constraints</span><span class="o">=</span><span class="n">constraints</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="n">tol</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+        <span class="p">)</span>
+
+        <span class="c1"># set final param</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_flat_param</span><span class="p">(</span><span class="n">to_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="o">.</span><span class="n">x</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">to_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_result</span><span class="o">.</span><span class="n">fun</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

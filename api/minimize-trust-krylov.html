@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>minimize(method=’trust-krylov’) &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="torchmin.minimize_constr" href="generated/torchmin.minimize_constr.html" />
+    <link rel="prev" title="minimize(method=’trust-exact’)" href="minimize-trust-exact.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#functional-api">Functional API</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.minimize.html">torchmin.minimize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-bfgs.html">minimize(method=’bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-lbfgs.html">minimize(method=’l-bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-cg.html">minimize(method=’cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-newton-cg.html">minimize(method=’newton-cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-newton-exact.html">minimize(method=’newton-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-dogleg.html">minimize(method=’dogleg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-ncg.html">minimize(method=’trust-ncg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-trust-exact.html">minimize(method=’trust-exact’)</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">minimize(method=’trust-krylov’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.minimize_constr.html">torchmin.minimize_constr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-lbfgsb.html">minimize_constr(method=’l-bfgs-b’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-frankwolfe.html">minimize_constr(method=’frank-wolfe’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="minimize-constr-trust-constr.html">minimize_constr(method=’trust-constr’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/torchmin.least_squares.html">torchmin.least_squares</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#optimizer-api">Optimizer API</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">API Documentation</a></li>
+      <li class="breadcrumb-item active">minimize(method=’trust-krylov’)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/minimize-trust-krylov.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="minimize-method-trust-krylov">
+<h1>minimize(method=’trust-krylov’)<a class="headerlink" href="#minimize-method-trust-krylov" title="Permalink to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="torchmin.trustregion._minimize_trust_krylov">
+<span class="sig-prename descclassname"><span class="pre">torchmin.trustregion.</span></span><span class="sig-name descname"><span class="pre">_minimize_trust_krylov</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fun</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">trust_region_options</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/torchmin/trustregion/krylov.html#_minimize_trust_krylov"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchmin.trustregion._minimize_trust_krylov" title="Permalink to this definition"></a></dt>
+<dd><p>Minimization of scalar function of one or more variables using
+the GLTR Krylov subspace trust-region algorithm.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This minimizer is in early stages and has not been rigorously
+tested. It may change in the near future.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fun</strong> (<em>callable</em>) – Scalar objective function to minimize.</p></li>
+<li><p><strong>x0</strong> (<em>Tensor</em>) – Initialization point.</p></li>
+<li><p><strong>initial_tr_radius</strong> (<em>float</em>) – Initial trust-region radius.</p></li>
+<li><p><strong>max_tr_radius</strong> (<em>float</em>) – Maximum value of the trust-region radius. No steps that are longer
+than this value will be proposed.</p></li>
+<li><p><strong>eta</strong> (<em>float</em>) – Trust region related acceptance stringency for proposed steps.</p></li>
+<li><p><strong>gtol</strong> (<em>float</em>) – Gradient norm must be less than <code class="docutils literal notranslate"><span class="pre">gtol</span></code> before successful
+termination.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>result</strong> – Result of the optimization routine.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OptimizeResult</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This trust-region solver is based on the GLTR algorithm as
+described in <a class="footnote-reference brackets" href="#id3" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> and <a class="footnote-reference brackets" href="#id4" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>.</p>
+<p class="rubric">References</p>
+<aside class="footnote brackets" id="id3" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>F. Lenders, C. Kirches, and A. Potschka, “trlib: A vector-free
+implementation of the GLTR method for…”,
+arXiv:1611.04718.</p>
+</aside>
+<aside class="footnote brackets" id="id4" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>N. Gould, S. Lucidi, M. Roma, P. Toint: “Solving the Trust-Region
+Subproblem using the Lanczos Method”,
+SIAM J. Optim., 9(2), 504–525, 1999.</p>
+</aside>
+<aside class="footnote brackets" id="id5" role="note">
+<span class="label"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></span>
+<p>J. Nocedal and  S. Wright, “Numerical optimization”,
+Springer Science &amp; Business Media. pp. 83-91, 2006.</p>
+</aside>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="minimize-trust-exact.html" class="btn btn-neutral float-left" title="minimize(method=’trust-exact’)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="generated/torchmin.minimize_constr.html" class="btn btn-neutral float-right" title="torchmin.minimize_constr" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

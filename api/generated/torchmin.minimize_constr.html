@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.minimize_constr &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="minimize_constr(method=’l-bfgs-b’)" href="../minimize-constr-lbfgsb.html" />
+    <link rel="prev" title="minimize(method=’trust-krylov’)" href="../minimize-trust-krylov.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#functional-api">Functional API</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="torchmin.minimize.html">torchmin.minimize</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-bfgs.html">minimize(method=’bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-lbfgs.html">minimize(method=’l-bfgs’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-cg.html">minimize(method=’cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-newton-cg.html">minimize(method=’newton-cg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-newton-exact.html">minimize(method=’newton-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-dogleg.html">minimize(method=’dogleg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-trust-ncg.html">minimize(method=’trust-ncg’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-trust-exact.html">minimize(method=’trust-exact’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-trust-krylov.html">minimize(method=’trust-krylov’)</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">torchmin.minimize_constr</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-constr-lbfgsb.html">minimize_constr(method=’l-bfgs-b’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-constr-frankwolfe.html">minimize_constr(method=’frank-wolfe’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../minimize-constr-trust-constr.html">minimize_constr(method=’trust-constr’)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="torchmin.least_squares.html">torchmin.least_squares</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#optimizer-api">Optimizer API</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Documentation</a></li>
+      <li class="breadcrumb-item active">torchmin.minimize_constr</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/torchmin.minimize_constr.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="torchmin-minimize-constr">
+<h1>torchmin.minimize_constr<a class="headerlink" href="#torchmin-minimize-constr" title="Permalink to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="torchmin.minimize_constr">
+<span class="sig-prename descclassname"><span class="pre">torchmin.</span></span><span class="sig-name descname"><span class="pre">minimize_constr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/torchmin/minimize_constr.html#minimize_constr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#torchmin.minimize_constr" title="Permalink to this definition"></a></dt>
+<dd><p>Minimize a scalar function of one or more variables subject to
+bounds and/or constraints.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Method <code class="docutils literal notranslate"><span class="pre">'trust-constr'</span></code> is currently a wrapper for SciPy’s
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html">trust-constr</a>
+solver.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f</strong> (<em>callable</em>) – Scalar objective function to minimize.</p></li>
+<li><p><strong>x0</strong> (<em>Tensor</em>) – Initialization point.</p></li>
+<li><p><strong>method</strong> (<em>str</em><em>, </em><em>optional</em>) – <p>The minimization routine to use. Should be one of the following:</p>
+<blockquote>
+<div><ul>
+<li><p>’l-bfgs-b’</p></li>
+<li><p>’frank-wolfe’</p></li>
+<li><p>’trust-constr’</p></li>
+</ul>
+</div></blockquote>
+<p>If no method is provided, a default method will be selected based
+on the criteria of the problem.</p>
+</p></li>
+<li><p><strong>constr</strong> (<em>dict</em><em> or </em><em>string</em><em>, </em><em>optional</em>) – <p>Constraint specifications. Should either be a string (Frank-Wolfe
+method) or a dictionary (trust-constr method) with the following fields:</p>
+<blockquote>
+<div><ul>
+<li><p>fun (callable) - Constraint function</p></li>
+<li><p>lb (Tensor or float, optional) - Constraint lower bounds</p></li>
+<li><p>ub (Tensor or float, optional) - Constraint upper bounds</p></li>
+</ul>
+</div></blockquote>
+<p>One of either <cite>lb</cite> or <cite>ub</cite> must be provided. When <cite>lb</cite> == <cite>ub</cite> it is
+interpreted as an equality constraint.</p>
+</p></li>
+<li><p><strong>bounds</strong> (sequence or <cite>Bounds</cite>, optional) – <p>Bounds on variables. There are two ways to specify the bounds:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Sequence of <code class="docutils literal notranslate"><span class="pre">(min,</span> <span class="pre">max)</span></code> pairs for each element in <cite>x</cite>. None
+is used to specify no bound.</p></li>
+<li><p>Instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">scipy.optimize.Bounds</span></code> class.</p></li>
+</ol>
+</div></blockquote>
+<p>Bounds of <cite>-inf</cite>/<cite>inf</cite> are interpreted as no bound. When <cite>lb</cite> == <cite>ub</cite>
+it is interpreted as an equality constraint.</p>
+</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em><em>, </em><em>optional</em>) – Maximum number of iterations to perform. If unspecified, this will
+be set to the default of the selected method.</p></li>
+<li><p><strong>tol</strong> (<em>float</em><em>, </em><em>optional</em>) – Tolerance for termination. For detailed control, use solver-specific
+options.</p></li>
+<li><p><strong>options</strong> (<em>dict</em><em>, </em><em>optional</em>) – A dictionary of keyword arguments to pass to the selected minimization
+routine.</p></li>
+<li><p><strong>callback</strong> (<em>callable</em><em>, </em><em>optional</em>) – Function to call after each iteration with the current parameter
+state, e.g. <code class="docutils literal notranslate"><span class="pre">callback(x)</span></code>.</p></li>
+<li><p><strong>disp</strong> (<em>int</em>) – <p>Level of algorithm’s verbosity:</p>
+<blockquote>
+<div><ul>
+<li><p>0 : work silently (default).</p></li>
+<li><p>1 : display a termination report.</p></li>
+<li><p>2 : display progress during iterations.</p></li>
+<li><p>3 : display progress during iterations (more complete report).</p></li>
+</ul>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>result</strong> – Result of the optimization routine.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OptimizeResult</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../minimize-trust-krylov.html" class="btn btn-neutral float-left" title="minimize(method=’trust-krylov’)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../minimize-constr-lbfgsb.html" class="btn btn-neutral float-right" title="minimize_constr(method=’l-bfgs-b’)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

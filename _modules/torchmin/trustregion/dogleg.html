@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>torchmin.trustregion.dogleg &mdash; pytorch-minimize 0.0.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            pytorch-minimize
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Install</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Documentation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">pytorch-minimize</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">torchmin.trustregion.dogleg</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for torchmin.trustregion.dogleg</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Dog-leg trust-region optimization.</span>
+
+<span class="sd">Code ported from SciPy to PyTorch</span>
+
+<span class="sd">Copyright (c) 2001-2002 Enthought, Inc.  2003-2019, SciPy Developers.</span>
+<span class="sd">All rights reserved.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">norm</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">_minimize_trust_region</span><span class="p">,</span> <span class="n">BaseQuadraticSubproblem</span>
+
+
+<div class="viewcode-block" id="_minimize_dogleg"><a class="viewcode-back" href="../../../api/minimize-dogleg.html#torchmin.trustregion._minimize_dogleg">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">_minimize_dogleg</span><span class="p">(</span>
+        <span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="o">**</span><span class="n">trust_region_options</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimization of scalar function of one or more variables using</span>
+<span class="sd">    the dog-leg trust-region algorithm.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        The Hessian is required to be positive definite at all times;</span>
+<span class="sd">        otherwise this algorithm will fail.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fun : callable</span>
+<span class="sd">        Scalar objective function to minimize</span>
+<span class="sd">    x0 : Tensor</span>
+<span class="sd">        Initialization point</span>
+<span class="sd">    initial_trust_radius : float</span>
+<span class="sd">        Initial trust-region radius.</span>
+<span class="sd">    max_trust_radius : float</span>
+<span class="sd">        Maximum value of the trust-region radius. No steps that are longer</span>
+<span class="sd">        than this value will be proposed.</span>
+<span class="sd">    eta : float</span>
+<span class="sd">        Trust region related acceptance stringency for proposed steps.</span>
+<span class="sd">    gtol : float</span>
+<span class="sd">        Gradient norm must be less than `gtol` before successful</span>
+<span class="sd">        termination.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : OptimizeResult</span>
+<span class="sd">        Result of the optimization routine.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Jorge Nocedal and Stephen Wright,</span>
+<span class="sd">           Numerical Optimization, second edition,</span>
+<span class="sd">           Springer-Verlag, 2006, page 73.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_minimize_trust_region</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span>
+                                  <span class="n">subproblem</span><span class="o">=</span><span class="n">DoglegSubproblem</span><span class="p">,</span>
+                                  <span class="o">**</span><span class="n">trust_region_options</span><span class="p">)</span></div>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DoglegSubproblem</span><span class="p">(</span><span class="n">BaseQuadraticSubproblem</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quadratic subproblem solved by the dogleg method&quot;&quot;&quot;</span>
+    <span class="n">hess_prod</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">cauchy_point</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The Cauchy point is minimal along the direction of steepest descent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cauchy_point</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jac</span>
+            <span class="n">Bg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hessp</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cauchy_point</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="o">/</span> <span class="n">g</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Bg</span><span class="p">))</span> <span class="o">*</span> <span class="n">g</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cauchy_point</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">newton_point</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The Newton point is a global minimum of the approximate function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_point</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">cholesky_solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">jac</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span>
+                                      <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hess</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_newton_point</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_newton_point</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trust_radius</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve quadratic subproblem&quot;&quot;&quot;</span>
+
+        <span class="c1"># Compute the Newton point.</span>
+        <span class="c1"># This is the optimum for the quadratic model function.</span>
+        <span class="c1"># If it is inside the trust radius then return this point.</span>
+        <span class="n">p_best</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">newton_point</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">norm</span><span class="p">(</span><span class="n">p_best</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">trust_radius</span><span class="p">:</span>
+            <span class="n">hits_boundary</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">return</span> <span class="n">p_best</span><span class="p">,</span> <span class="n">hits_boundary</span>
+
+        <span class="c1"># Compute the Cauchy point.</span>
+        <span class="c1"># This is the predicted optimum along the direction of steepest descent.</span>
+        <span class="n">p_u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cauchy_point</span><span class="p">()</span>
+
+        <span class="c1"># If the Cauchy point is outside the trust region,</span>
+        <span class="c1"># then return the point where the path intersects the boundary.</span>
+        <span class="n">p_u_norm</span> <span class="o">=</span> <span class="n">norm</span><span class="p">(</span><span class="n">p_u</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">p_u_norm</span> <span class="o">&gt;=</span> <span class="n">trust_radius</span><span class="p">:</span>
+            <span class="n">p_boundary</span> <span class="o">=</span> <span class="n">p_u</span> <span class="o">*</span> <span class="p">(</span><span class="n">trust_radius</span> <span class="o">/</span> <span class="n">p_u_norm</span><span class="p">)</span>
+            <span class="n">hits_boundary</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="n">p_boundary</span><span class="p">,</span> <span class="n">hits_boundary</span>
+
+        <span class="c1"># Compute the intersection of the trust region boundary</span>
+        <span class="c1"># and the line segment connecting the Cauchy and Newton points.</span>
+        <span class="c1"># This requires solving a quadratic equation.</span>
+        <span class="c1"># ||p_u + t*(p_best - p_u)||**2 == trust_radius**2</span>
+        <span class="c1"># Solve this for positive time t using the quadratic formula.</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">tb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_boundaries_intersections</span><span class="p">(</span><span class="n">p_u</span><span class="p">,</span> <span class="n">p_best</span> <span class="o">-</span> <span class="n">p_u</span><span class="p">,</span>
+                                                  <span class="n">trust_radius</span><span class="p">)</span>
+        <span class="n">p_boundary</span> <span class="o">=</span> <span class="n">p_u</span> <span class="o">+</span> <span class="n">tb</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_best</span> <span class="o">-</span> <span class="n">p_u</span><span class="p">)</span>
+        <span class="n">hits_boundary</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">p_boundary</span><span class="p">,</span> <span class="n">hits_boundary</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Reuben Feinman.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

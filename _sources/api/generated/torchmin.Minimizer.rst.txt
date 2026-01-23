@@ -1,0 +1,42 @@
+﻿torchmin.Minimizer
+==================
+
+.. currentmodule:: torchmin
+
+.. autoclass:: Minimizer
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Minimizer.__init__
+      ~Minimizer.add_param_group
+      ~Minimizer.closure
+      ~Minimizer.dir_evaluate
+      ~Minimizer.load_state_dict
+      ~Minimizer.profile_hook_step
+      ~Minimizer.register_load_state_dict_post_hook
+      ~Minimizer.register_load_state_dict_pre_hook
+      ~Minimizer.register_state_dict_post_hook
+      ~Minimizer.register_state_dict_pre_hook
+      ~Minimizer.register_step_post_hook
+      ~Minimizer.register_step_pre_hook
+      ~Minimizer.state_dict
+      ~Minimizer.step
+      ~Minimizer.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Minimizer.nfev
+   
+   
