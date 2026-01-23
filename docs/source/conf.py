@@ -24,7 +24,7 @@ copyright = '2021, Reuben Feinman'
 author = 'Reuben Feinman'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0-beta'
+release = torchmin.__version__
 
 
 # -- General configuration ---------------------------------------------------
