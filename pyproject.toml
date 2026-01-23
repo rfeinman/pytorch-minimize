@@ -47,10 +47,6 @@ version = {attr = "torchmin._version.__version__"}
 [tool.setuptools.packages.find]
 exclude = ["tests*", "docs*", "examples*", "tmp*"]
 
-# For sdist (source distribution) control
-[tool.setuptools.exclude-package-data]
-"*" = ["docs", "examples", "tmp"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

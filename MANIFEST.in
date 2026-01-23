@@ -1,0 +1,19 @@
+# Include essential files
+include README.md
+include LICENSE
+include pyproject.toml
+
+# Include source package
+recursive-include torchmin *.py
+
+# Include tests
+recursive-include tests *.py
+
+# Exclude unwanted directories
+prune docs
+prune examples
+prune tmp
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .DS_Store
