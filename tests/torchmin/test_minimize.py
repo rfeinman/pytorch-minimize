@@ -22,7 +22,7 @@ ALL_METHODS = [
     'newton-cg',
     'newton-exact',
     'trust-ncg',
-    'trust-krylov',
+    # 'trust-krylov',  # TODO: fix trust-krylov solver and add this back
     'trust-exact',
     'dogleg',
 ]

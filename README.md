@@ -44,11 +44,9 @@ __Install with pip:__
 
     pip install pytorch-minimize
 
-__Install from source:__
+__Install from source (bleeding edge):__
 
-    git clone https://github.com/rfeinman/pytorch-minimize.git
-    cd pytorch-minimize
-    pip install -e .
+    pip install git+https://github.com/rfeinman/pytorch-minimize.git
 
 ## Motivation
 Although PyTorch offers many routines for stochastic optimization, utilities for deterministic optimization are scarce; only L-BFGS is included in the `optim` package, and it's modified for mini-batch training.
