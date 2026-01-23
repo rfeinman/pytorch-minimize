@@ -10,12 +10,7 @@ To install pytorch-minimize, users may either 1) install the official PyPI relea
 
 **Install from source (bleeding edge)**::
 
-    # clone the latest master to any location
-    git clone https://github.com/rfeinman/pytorch-minimize.git
-
-    # cd to the root directory and install the package with pip
-    cd pytorch-minimize
-    pip install -e .
+    pip install git+https://github.com/rfeinman/pytorch-minimize.git
 
 
 **PyTorch requirement**
