@@ -232,7 +232,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
         if callback is not None:
             if callback(x.clone()):
                 warnflag = 5
-                msg = 'Stopped by the user through the callback function.'
+                msg = _status_message['callback_stop']
                 break
         k += 1
 

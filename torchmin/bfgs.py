@@ -225,7 +225,7 @@ def _minimize_bfgs_core(
         if callback is not None:
             if callback(x_new):
                 warnflag = 5
-                msg = 'Stopped by the user through the callback function.'
+                msg = _status_message['callback_stop']
                 break
 
 

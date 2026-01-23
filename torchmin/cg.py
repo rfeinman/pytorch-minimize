@@ -118,7 +118,7 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
         if callback is not None:
             if callback(x):
                 warnflag = 5
-                msg = 'Stopped by the user through the callback function.'
+                msg = _status_message['callback_stop']
                 break
 
         # check optimality

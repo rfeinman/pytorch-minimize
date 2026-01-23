@@ -12,4 +12,5 @@ _status_message = {
     'pr_loss': 'Desired error not necessarily achieved due to precision loss.',
     'nan': 'NaN result encountered.',
     'out_of_bounds': 'The result is outside of the provided bounds.',
+    'callback_stop': 'Stopped by the user through the callback function.',
 }

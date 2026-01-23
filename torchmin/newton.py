@@ -183,7 +183,7 @@ def _minimize_newton_cg(
         if callback is not None:
             if callback(x):
                 warnflag = 5
-                msg = 'Stopped by the user through the callback function.'
+                msg = _status_message['callback_stop']
                 break
         if return_all:
             allvecs.append(x)
@@ -371,7 +371,7 @@ def _minimize_newton_exact(
         if callback is not None:
             if callback(x):
                 warnflag = 5
-                msg = 'Stopped by the user through the callback function.'
+                msg = _status_message['callback_stop']
                 break
         if return_all:
             allvecs.append(x)
