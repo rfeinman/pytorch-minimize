@@ -42,7 +42,7 @@ Homepage = "https://github.com/rfeinman/pytorch-minimize"
 include-package-data = false  # Only include .py files
 
 [tool.setuptools.dynamic]
-version = {attr = "torchmin.__version__"}
+version = {attr = "torchmin._version.__version__"}
 
 [tool.setuptools.packages.find]
 exclude = ["tests*", "docs*", "examples*", "tmp*"]
