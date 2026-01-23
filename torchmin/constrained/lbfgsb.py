@@ -291,7 +291,10 @@ def _minimize_lbfgsb(
             allvecs.append(x_new.clone())
 
         if callback is not None:
-            callback(x_new.view_as(x0))
+            if callback(x_new.view_as(x0)):
+                warnflag = 5
+                msg = 'Stopped by the user through the callback function.'
+                break
 
         # ========================================
         #   Update Hessian approximation

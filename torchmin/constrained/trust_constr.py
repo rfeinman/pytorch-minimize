@@ -199,8 +199,11 @@ def _minimize_trust_constr(
     # handle callbacks
     if callback is not None:
         callback_ = callback
-        callback = lambda x, state: callback_(
-            torch.tensor(x, dtype=x0.dtype, device=x0.device).view_as(x0), state)
+
+        def callback(x, state):
+            # x = state.x
+            x = x0.new_tensor(x).view_as(x0)
+            return callback_(x)
 
     # handle bounds
     if bounds is not None:

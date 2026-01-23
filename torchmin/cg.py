@@ -119,7 +119,10 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
         if return_all:
             allvecs.append(x)
         if callback is not None:
-            callback(x)
+            if callback(x):
+                warnflag = 5
+                msg = 'Stopped by the user through the callback function.'
+                break
 
         # check optimality
         if grad_norm <= gtol:

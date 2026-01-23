@@ -129,7 +129,10 @@ def _minimize_frankwolfe(
             print('iter %3d - fval: %0.4f' % (niter, f))
 
         if callback is not None:
-            callback(x)
+            if callback(x):
+                warnflag = 5
+                msg = 'Stopped by the user through the callback function.'
+                break
 
         # check optimality
         grad_norm = g.norm(p=normp)
