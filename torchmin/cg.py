@@ -120,7 +120,7 @@ def _minimize_cg(fun, x0, max_iter=None, gtol=1e-5, normp=float('inf'),
             allvecs.append(x)
         if callback is not None:
             if callback(x):
-                warnflag = 1
+                warnflag = 5
                 msg = 'Stopped by the user through the callback function.'
                 break
 

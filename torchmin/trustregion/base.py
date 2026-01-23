@@ -235,7 +235,7 @@ def _minimize_trust_region(fun, x0, subproblem=None, initial_trust_radius=1.,
             allvecs.append(x.clone())
         if callback is not None:
             if callback(x.clone()):
-                warnflag = 1
+                warnflag = 5
                 msg = 'Stopped by the user through the callback function.'
                 break
         k += 1

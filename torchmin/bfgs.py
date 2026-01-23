@@ -227,7 +227,7 @@ def _minimize_bfgs_core(
             allvecs.append(x_new)
         if callback is not None:
             if callback(x_new):
-                warnflag = 1
+                warnflag = 5
                 msg = 'Stopped by the user through the callback function.'
                 break
 

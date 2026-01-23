@@ -185,7 +185,7 @@ def _minimize_newton_cg(
             print('iter %3d - fval: %0.4f' % (n_iter, f))
         if callback is not None:
             if callback(x):
-                warnflag = 1
+                warnflag = 5
                 msg = 'Stopped by the user through the callback function.'
                 break
         if return_all:
@@ -373,7 +373,7 @@ def _minimize_newton_exact(
             print('iter %3d - fval: %0.4f - info: %d' % (n_iter, f, info))
         if callback is not None:
             if callback(x):
-                warnflag = 1
+                warnflag = 5
                 msg = 'Stopped by the user through the callback function.'
                 break
         if return_all:
