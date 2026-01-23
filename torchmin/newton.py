@@ -3,13 +3,10 @@ from scipy.sparse.linalg import eigsh
 from torch import Tensor
 import torch
 
+from ._optimize import _status_message
 from .function import ScalarFunction
 from .line_search import strong_wolfe
 
-try:
-    from scipy.optimize.optimize import _status_message
-except ImportError:
-    from scipy.optimize._optimize import _status_message
 
 _status_message['cg_warn'] = "Warning: CG iterations didn't converge. The " \
                              "Hessian is not positive definite."

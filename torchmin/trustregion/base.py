@@ -11,13 +11,9 @@ import torch
 from torch.linalg import norm
 from scipy.optimize import OptimizeResult
 
+from .._optimize import _status_message
 from ..function import ScalarFunction
 from ..optim.minimizer import Minimizer
-
-try:
-    from scipy.optimize.optimize import _status_message
-except ImportError:
-    from scipy.optimize._optimize import _status_message
 
 status_messages = (
     _status_message['success'],

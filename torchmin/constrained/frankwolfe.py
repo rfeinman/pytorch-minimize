@@ -8,12 +8,8 @@ from scipy.optimize import (
 )
 from scipy.sparse.linalg import svds
 
+from .._optimize import _status_message
 from ..function import ScalarFunction
-
-try:
-    from scipy.optimize.optimize import _status_message
-except ImportError:
-    from scipy.optimize._optimize import _status_message
 
 
 @torch.no_grad()
