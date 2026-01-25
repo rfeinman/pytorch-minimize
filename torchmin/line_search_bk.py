@@ -1,12 +1,10 @@
+
 import warnings
 import torch
 from torch.optim.lbfgs import _strong_wolfe, _cubic_interpolate
 from scipy.optimize import minimize_scalar
-from scipy.optimize._linesearch import line_search_wolfe1, line_search_wolfe2, LineSearchWarning
-from scipy.optimize._optimize import _LineSearchError
-from scipy.optimize._dcsrch import DCSRCH
 
-__all__ = ['strong_wolfe', 'brent', 'backtracking', 'scipy_wolfe']
+__all__ = ['strong_wolfe', 'brent', 'backtracking']
 
 
 def _strong_wolfe_extra(
@@ -228,124 +226,3 @@ def backtracking(fun, x, t, d, f, g, mu=0.1, decay=0.98, max_ls=500, tmin=1e-5):
         warnings.warn('backtracking did not converge.')
 
     return x_new, f_new, t, success
-
-
-def scipy_wolfe(obj_func, x, t, d, f, g, gtd, c1=1e-4, c2=0.9, 
-                  tolerance_change=1e-9, max_ls=25, extra_condition=None):
-    """GPU-based line search equivalent to scipy's _line_search_wolfe12.
-    
-    This function mimics scipy.optimize._optimize._line_search_wolfe12 behavior:
-    - First tries a more restrictive wolfe search (similar to wolfe1)
-    - Falls back to a more permissive wolfe search (similar to wolfe2) if first fails
-    - Raises exception if both fail
-    
-    All operations run on GPU, similar to strong_wolfe.
-    
-    Parameters
-    ----------
-    obj_func : callable
-        Function that evaluates the objective and gradient at a given point
-        Signature: obj_func(x, alpha, d) -> namedtuple(f, grad)
-    x : torch.Tensor
-        Current parameter vector
-    t : float
-        Initial step size
-    d : torch.Tensor
-        Search direction
-    f : float
-        Current function value
-    g : torch.Tensor
-        Current gradient
-    gtd : float
-        Gradient dotted with search direction
-    c1 : float, optional
-        Parameter for Armijo condition (default: 1e-4)
-    c2 : float, optional
-        Parameter for curvature condition (default: 0.9)
-    tolerance_change : float, optional
-        Minimum change tolerance (default: 1e-9)
-    max_ls : int, optional
-        Maximum number of line search iterations (default: 25)
-    extra_condition : callable, optional
-        Extra condition function (default: None)
-    
-    Returns
-    -------
-    f_new : float
-        New function value
-    g_new : torch.Tensor
-        New gradient
-    t : float
-        Step size
-    ls_evals : int
-        Number of function evaluations
-    """
-    
-    if gtd is None:
-        gtd = g.dot(d)
-    
-    # Convert to Python floats for scalars
-    f = float(f)
-    t = float(t)
-    gtd = float(gtd)
-    
-    if extra_condition is None:
-        extra_condition = lambda *args: True
-    
-    # Try first strategy: more restrictive wolfe search (similar to wolfe1)
-    # This uses stricter conditions and may fail more often
-    try:
-        f_new, g_new, t_new, ls_evals = _strong_wolfe_extra(
-            obj_func, x.view(-1), t, d.view(-1), f, g.view(-1), gtd,
-            c1=c1, c2=c2, tolerance_change=tolerance_change, 
-            max_ls=max_ls, extra_condition=extra_condition
-        )
-        
-        # Convert f_new to float if it's a tensor
-        if isinstance(f_new, torch.Tensor):
-            f_new = float(f_new.item())
-        else:
-            f_new = float(f_new)
-        
-        # Check if extra_condition is satisfied
-        x_new = x + t_new * d
-        if not extra_condition(t_new, x_new, f_new, g_new):
-            # Extra condition failed, try fallback
-            raise RuntimeError("Extra condition failed")
-        
-        # Success! Return results (matching strong_wolfe format)
-        return f_new, g_new.view_as(x), float(t_new), ls_evals
-        
-    except (RuntimeError, ValueError, Exception) as e1:
-        # First attempt failed, try fallback strategy (more permissive, similar to wolfe2)
-        # Use slightly relaxed conditions
-        try:
-            # Try with more iterations and slightly relaxed tolerance
-            f_new, g_new, t_new, ls_evals = _strong_wolfe_extra(
-                obj_func, x.view(-1), t, d.view(-1), f, g.view(-1), gtd,
-                c1=c1 * 0.5,  # More relaxed Armijo condition
-                c2=min(c2 + 0.1, 0.99),  # Slightly more relaxed curvature
-                tolerance_change=tolerance_change * 10,  # More relaxed tolerance
-                max_ls=max_ls * 2,  # More iterations allowed
-                extra_condition=extra_condition
-            )
-            
-            # Convert f_new to float if it's a tensor
-            if isinstance(f_new, torch.Tensor):
-                f_new = float(f_new.item())
-            else:
-                f_new = float(f_new)
-            
-            # Check if extra_condition is satisfied
-            x_new = x + t_new * d
-            if not extra_condition(t_new, x_new, f_new, g_new):
-                raise RuntimeError("Extra condition failed in fallback")
-            
-            # Success with fallback!
-            return f_new, g_new.view_as(x), float(t_new), ls_evals
-            
-        except (RuntimeError, ValueError, Exception) as e2:
-            # Both attempts failed, raise exception matching scipy behavior
-            raise RuntimeError(
-                f"Line search failed: first attempt ({e1}), fallback attempt ({e2})"
-            )

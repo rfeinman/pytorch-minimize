@@ -1,6 +1,7 @@
 import torch
 
 from .bfgs import _minimize_bfgs, _minimize_lbfgs
+from .ssbroyden import _minimize_ssbroyden, _minimize_lssbroyden
 from .cg import _minimize_cg
 from .newton import _minimize_newton_cg, _minimize_newton_exact
 from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
@@ -9,6 +10,7 @@ from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
 _tolerance_keys = {
     'l-bfgs': 'gtol',
     'bfgs': 'gtol',
+    'ssbroyden':'gtol',
     'cg': 'gtol',
     'newton-cg': 'xtol',
     'newton-exact': 'xtol',
@@ -74,7 +76,7 @@ def minimize(
     """
     x0 = torch.as_tensor(x0)
     method = method.lower()
-    assert method in ['bfgs', 'l-bfgs', 'cg', 'newton-cg', 'newton-exact',
+    assert method in ['bfgs', 'l-bfgs','ssbroyden','cg', 'newton-cg', 'newton-exact',
                       'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']
     if options is None:
         options = {}
@@ -89,6 +91,13 @@ def minimize(
         return _minimize_bfgs(fun, x0, **options)
     elif method == 'l-bfgs':
         return _minimize_lbfgs(fun, x0, **options)
+    elif method == 'ssbroyden':
+        # Extract SSBroyden-specific parameters from options
+        ssbroyden_options = {k: v for k, v in options.items() 
+                            if k in ['lr', 'max_iter', 'line_search', 'gtol', 
+                                    'xtol', 'ftol', 'xrtol', 'normp', 'callback', 
+                                    'disp', 'return_all', 'initial_scale', 'hess_inv0']}
+        return _minimize_ssbroyden(fun, x0, **ssbroyden_options)
     elif method == 'cg':
         return _minimize_cg(fun, x0, **options)
     elif method == 'newton-cg':
