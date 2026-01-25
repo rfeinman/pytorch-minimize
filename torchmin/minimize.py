@@ -1,7 +1,7 @@
 import torch
 
-# from .bfgs import _minimize_bfgs, _minimize_lbfgs
-from .ssbroyden import _minimize_bfgs, _minimize_lbfgs
+from .bfgs import _minimize_bfgs, _minimize_lbfgs
+from .ssbroyden import _minimize_ssbroyden, _minimize_lssbroyden
 from .cg import _minimize_cg
 from .newton import _minimize_newton_cg, _minimize_newton_exact
 from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
@@ -10,6 +10,7 @@ from .trustregion import (_minimize_trust_exact, _minimize_dogleg,
 _tolerance_keys = {
     'l-bfgs': 'gtol',
     'bfgs': 'gtol',
+    'ssbroyden':'gtol',
     'cg': 'gtol',
     'newton-cg': 'xtol',
     'newton-exact': 'xtol',
@@ -22,7 +23,7 @@ _tolerance_keys = {
 
 def minimize(
         fun, x0, method, max_iter=None, tol=None, options=None, callback=None,
-        disp=0, return_all=False, initial_scale=False, hess_inv0=None, method_bfgs="BFGS"):
+        disp=0, return_all=False):
     """Minimize a scalar function of one or more variables.
 
     .. note::
@@ -75,7 +76,7 @@ def minimize(
     """
     x0 = torch.as_tensor(x0)
     method = method.lower()
-    assert method in ['bfgs', 'l-bfgs', 'cg', 'newton-cg', 'newton-exact',
+    assert method in ['bfgs', 'l-bfgs','ssbroyden','cg', 'newton-cg', 'newton-exact',
                       'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']
     if options is None:
         options = {}
@@ -87,21 +88,16 @@ def minimize(
     options.setdefault('return_all', return_all)
 
     if method == 'bfgs':
-        # Extract method_bfgs from options if present, otherwise use function parameter
-        method_bfgs_value = options.get('method_bfgs', method_bfgs)
-        # Filter out BFGS-specific parameters from options
-        bfgs_options = {k: v for k, v in options.items() 
-                       if k in ['lr', 'inv_hess', 'max_iter', 'line_search', 'gtol', 
-                               'xtol', 'xrtol', 'normp', 'callback', 'disp', 'return_all']}
-        # Add the new parameters
-        bfgs_options.update({
-            'initial_scale': initial_scale,
-            'hess_inv0': hess_inv0,
-            'method_bfgs': method_bfgs_value
-        })
-        return _minimize_bfgs(fun, x0, **bfgs_options)
+        return _minimize_bfgs(fun, x0, **options)
     elif method == 'l-bfgs':
         return _minimize_lbfgs(fun, x0, **options)
+    elif method == 'ssbroyden':
+        # Extract SSBroyden-specific parameters from options
+        ssbroyden_options = {k: v for k, v in options.items() 
+                            if k in ['lr', 'max_iter', 'line_search', 'gtol', 
+                                    'xtol', 'ftol', 'xrtol', 'normp', 'callback', 
+                                    'disp', 'return_all', 'initial_scale', 'hess_inv0']}
+        return _minimize_ssbroyden(fun, x0, **ssbroyden_options)
     elif method == 'cg':
         return _minimize_cg(fun, x0, **options)
     elif method == 'newton-cg':

@@ -3,13 +3,10 @@ import torch
 from torch import Tensor
 from scipy.optimize import OptimizeResult
 
+from ._optimize import _status_message
 from .function import ScalarFunction
 from .line_search import strong_wolfe
 
-try:
-    from scipy.optimize.optimize import _status_message
-except ImportError:
-    from scipy.optimize._optimize import _status_message
 
 class HessianUpdateStrategy(ABC):
     def __init__(self):
@@ -226,7 +223,11 @@ def _minimize_bfgs_core(
         if return_all:
             allvecs.append(x_new)
         if callback is not None:
-            callback(x_new)
+            if callback(x_new):
+                warnflag = 5
+                msg = _status_message['callback_stop']
+                break
+
 
         # ================================
         #   update hessian approximation
