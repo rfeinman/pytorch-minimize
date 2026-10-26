@@ -115,6 +115,10 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None,
 
     v = torch.where(alpha > 0, v / alpha, v)
 
+    if alpha * beta == 0:
+        # A^T b == 0 (or b - A x0 == 0): x is already a solution.
+        return x, 0
+
     # Initialize variables for 1st iteration.
 
     zetabar = alpha * beta
@@ -186,6 +190,9 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None,
             v.mul_(-beta).add_(A.rmatvec(u))
             torch.norm(v, out=alpha)
             v = torch.where(alpha > 0, v / alpha, v)
+            exhausted = check_nonzero and not alpha > 0
+        else:
+            exhausted = True
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
 
@@ -213,6 +220,12 @@ def lsmr(A, b, damp=0., atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None,
         hbar.mul_(-thetabar * rho).div_(rhoold * rhobarold)
         hbar.add_(h)
         x.addcdiv_(zeta * hbar, rho * rhobar)
+
+        if exhausted:
+            # The bidiagonalization terminated (beta or alpha is zero), so x
+            # is exact. Continuing would divide by zero and produce NaNs.
+            break
+
         h.mul_(-thetanew).div_(rho)
         h.add_(v)
 
